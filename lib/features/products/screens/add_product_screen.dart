@@ -6,6 +6,7 @@ import 'dart:io';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/image_picker_widget.dart';
 import '../../../shared/widgets/barcode_scanner_page.dart';
+import '../../../shared/widgets/usb_barcode_listener.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/product_provider.dart';
 
@@ -16,7 +17,7 @@ class AddProductScreen extends StatefulWidget {
   State<AddProductScreen> createState() => _AddProductScreenState();
 }
 
-class _AddProductScreenState extends State<AddProductScreen> {
+class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHandler {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
@@ -129,7 +130,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return UsbBarcodeListener(
+      onBarcodeScanned: handleUsbBarcode,
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Yeni Ürün Ekle'),
         elevation: 0,
@@ -471,10 +474,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _barcodeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Barkod',
+                    autofocus: false, // Manuel focus control
+                    decoration: InputDecoration(
+                      labelText: 'Barkod (USB cihaz destekli)',
                       hintText: 'Barkod numarası',
-                      prefixIcon: Icon(Icons.qr_code),
+                      prefixIcon: const Icon(Icons.qr_code),
+                      suffixIcon: Icon(
+                        Icons.usb,
+                        color: AppTheme.primaryColor.withOpacity(0.7),
+                        size: 20,
+                      ),
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -528,6 +537,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
 
     return allImageUrls;
+  }
+
+  @override
+  void onUsbBarcodeReceived(String barcode) {
+    // USB barkod cihazından gelen barkodu işle
+    setState(() {
+      _barcodeController.text = barcode;
+    });
+    
+    showBarcodeSuccess(barcode);
+    
+    // Focus'u barkod alanından bir sonraki alana geçir
+    FocusScope.of(context).nextFocus();
   }
 
   void _scanBarcode() async {
@@ -624,5 +646,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         });
       }
     }
+  }
+      ), // UsbBarcodeListener kapanışı
+    ); // Scaffold kapanışı
   }
 }
