@@ -13,6 +13,8 @@ void main() async {
 
   try {
     await FirebaseService.initialize();
+    // Test kullanıcısı oluştur (geliştirme için)
+    await FirebaseService.createTestUser();
   } catch (e) {
     print('Firebase initialization failed: $e');
   }

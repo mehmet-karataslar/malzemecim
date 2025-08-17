@@ -44,7 +44,7 @@ dependencies:
   provider: ^6.1.2
   
   # QR/Barcode
-  qr_code_scanner: ^1.0.1
+  mobile_scanner: ^5.2.3
   barcode_widget: ^2.0.4
   
   # Image handling

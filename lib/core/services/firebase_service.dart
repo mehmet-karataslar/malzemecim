@@ -25,4 +25,42 @@ class FirebaseService {
       rethrow;
     }
   }
+
+  // Test kullanıcısı oluşturma (geliştirme için)
+  static Future<void> createTestUser() async {
+    try {
+      final testEmail = 'hakim@gmail.com';
+      final testPassword = 'dicle2121';
+
+      // Kullanıcı zaten var mı kontrol et
+      final userQuery = await firestore
+          .collection('users')
+          .where('email', isEqualTo: testEmail)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        // Test kullanıcısı oluştur
+        final userCredential = await auth.createUserWithEmailAndPassword(
+          email: testEmail,
+          password: testPassword,
+        );
+
+        // Firestore'a kullanıcı bilgilerini kaydet
+        await firestore.collection('users').doc(userCredential.user!.uid).set({
+          'email': testEmail,
+          'name': 'Hakim Bey',
+          'role': 'admin',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+          'isActive': true,
+        });
+
+        print('Test user created successfully: $testEmail');
+      } else {
+        print('Test user already exists: $testEmail');
+      }
+    } catch (e) {
+      print('Test user creation error: $e');
+    }
+  }
 }
