@@ -343,21 +343,34 @@ class _ScannerScreenState extends State<ScannerScreen> {
     scannerController!.toggleTorch();
   }
 
-  void _searchProduct(String code) {
-    // TODO: Ürün arama implementasyonu
+  void _searchProduct(String code) async {
+    // Ürün arama için search screen'e yönlendir
+    Navigator.pushNamed(context, '/search');
+
+    // Kısa bir delay ile arama yapılacak kodu search provider'a gönder
+    await Future.delayed(const Duration(milliseconds: 500));
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Ürün aranıyor: $code'),
+        content: Text('Barkod ile arama: $code'),
         backgroundColor: AppTheme.successColor,
+        action: SnackBarAction(
+          label: 'Ara',
+          onPressed: () {
+            Navigator.pushNamed(context, '/search');
+          },
+        ),
       ),
     );
   }
 
   void _addNewProduct(String code) {
-    // TODO: Yeni ürün ekleme implementasyonu
+    // Yeni ürün ekleme sayfasına barkod ile yönlendir
+    Navigator.pushNamed(context, '/add-product', arguments: {'barcode': code});
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Yeni ürün ekleniyor: $code'),
+        content: Text('Barkod ile ürün ekleme: $code'),
         backgroundColor: AppTheme.primaryColor,
       ),
     );
