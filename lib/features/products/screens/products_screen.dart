@@ -4,6 +4,8 @@ import 'dart:async';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/widgets/product_image_widget.dart';
+import '../../../shared/widgets/usb_barcode_listener.dart';
+import '../../../shared/widgets/barcode_scanner_page.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/product_provider.dart';
 import 'add_product_screen.dart';
@@ -16,7 +18,8 @@ class ProductsScreen extends StatefulWidget {
   State<ProductsScreen> createState() => _ProductsScreenState();
 }
 
-class _ProductsScreenState extends State<ProductsScreen> {
+class _ProductsScreenState extends State<ProductsScreen>
+    with UsbBarcodeHandler {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'Tümü';
   Timer? _debounceTimer;
@@ -55,6 +58,38 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   @override
+  void onUsbBarcodeReceived(String barcode) {
+    // USB barkod ile arama yap
+    setState(() {
+      _searchController.text = barcode;
+    });
+
+    // Arama işlemini başlat
+    _onSearchChanged(barcode);
+
+    showBarcodeSuccess(barcode);
+  }
+
+  void _scanBarcodeWithCamera() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BarcodeScannorPage(),
+      ),
+    );
+    
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _searchController.text = result;
+      });
+      
+      _onSearchChanged(result);
+      
+      showBarcodeSuccess(result);
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _debounceTimer?.cancel();
@@ -63,7 +98,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return UsbBarcodeListener(
+      onBarcodeScanned: handleUsbBarcode,
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Ürünler'),
         elevation: 0,
@@ -221,17 +258,37 @@ class _ProductsScreenState extends State<ProductsScreen> {
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Ürün adı, marka, barkod veya kategori ara...',
+              hintText: 'Arama... (USB & Kamera barkod destekli)',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // USB Barkod göstergesi
+                  Icon(
+                    Icons.usb,
+                    size: 18,
+                    color: AppTheme.primaryColor.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  // Kamera barkod tarama butonu
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_scanner),
+                    onPressed: _scanBarcodeWithCamera,
+                    tooltip: 'Kamera ile Barkod Tara',
+                    iconSize: 20,
+                  ),
+                  // Temizle butonu
+                  if (_searchController.text.isNotEmpty)
+                    IconButton(
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         _searchController.clear();
                         _onSearchChanged('');
                       },
-                    )
-                  : null,
+                      iconSize: 20,
+                    ),
+                ],
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -734,7 +791,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
             child: const Text('Kapat'),
           ),
         ],
-      ),
-    );
+        ), // AlertDialog kapanışı
+      ), // Scaffold kapanışı
+    ); // UsbBarcodeListener kapanışı
   }
 }
