@@ -64,9 +64,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       _buildErrorMessage(authProvider.errorMessage!),
 
                     const SizedBox(height: 40),
-
-                    // Info Text
-                    _buildInfoText(),
                   ],
                 ),
               ),
@@ -201,38 +198,6 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(message, style: TextStyle(color: Colors.red[600])),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoText() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info, color: Colors.blue[600], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Demo Hesapları',
-                style: TextStyle(
-                  color: Colors.blue[600],
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Admin: admin@malzemecim.com / 123456\nÇalışan: calisan@malzemecim.com / 123456',
-            style: TextStyle(color: Colors.blue[600], fontSize: 12),
           ),
         ],
       ),
