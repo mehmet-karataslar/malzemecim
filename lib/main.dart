@@ -13,8 +13,6 @@ void main() async {
 
   try {
     await FirebaseService.initialize();
-    // Demo verileri oluştur (sadece development için)
-    await FirebaseService.createDemoData();
   } catch (e) {
     print('Firebase initialization failed: $e');
   }
