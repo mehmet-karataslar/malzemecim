@@ -558,20 +558,6 @@ class _ProductsScreenState extends State<ProductsScreen>
     );
   }
 
-  void _showProductImages(ProductModel product) {
-    if (product.imageUrls.isEmpty) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ProductImageFullScreen(
-          imageUrls: product.imageUrls,
-          initialIndex: 0,
-          productName: product.name,
-        ),
-      ),
-    );
-  }
-
   void _handleMenuAction(String action, ProductModel product) {
     switch (action) {
       case 'edit':
