@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "malzemecim-21"
+  },
+  "targets": {
+    "malzemecim-21": {
+      "hosting": {
+        "malzemecim-app": [
+          "malzemecim-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
