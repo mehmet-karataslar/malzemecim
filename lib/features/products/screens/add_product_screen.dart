@@ -17,7 +17,8 @@ class AddProductScreen extends StatefulWidget {
   State<AddProductScreen> createState() => _AddProductScreenState();
 }
 
-class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHandler {
+class _AddProductScreenState extends State<AddProductScreen>
+    with UsbBarcodeHandler {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
@@ -27,33 +28,15 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
   final _minStockController = TextEditingController();
   final _barcodeController = TextEditingController();
 
-  String? _selectedUnit;
-  String? _selectedCategory;
+  String? _selectedCategory = 'Nalburiye';
+  String? _selectedUnit = 'Adet';
   bool _isLoading = false;
+
+  // Fotoğraf yönetimi
   List<String> _imageUrls = [];
   List<File> _localImages = [];
-
-  // Dinamik label getters
-  String get stockLabel {
-    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
-      return 'Mevcut Stok *';
-    }
-    return 'Kaç ${_selectedUnit!.toLowerCase()} *';
-  }
-
-  String get minStockLabel {
-    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
-      return 'Min. Stok';
-    }
-    return 'Min. ${_selectedUnit!.toLowerCase()}';
-  }
-
-  String get priceLabel {
-    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
-      return 'Birim Fiyat (₺) *';
-    }
-    return '${_selectedUnit!} başına fiyat (₺) *';
-  }
+  GlobalKey<State<ImagePickerWidget>> _imagePickerKey =
+      GlobalKey<State<ImagePickerWidget>>();
 
   // Birim seçenekleri
   final List<String> _units = [
@@ -129,57 +112,87 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
   }
 
   @override
+  void onUsbBarcodeReceived(String barcode) {
+    // USB barkod cihazından gelen barkodu işle
+    setState(() {
+      _barcodeController.text = barcode;
+    });
+
+    showBarcodeSuccess(barcode);
+
+    // Focus'u barkod alanından bir sonraki alana geçir
+    FocusScope.of(context).nextFocus();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return UsbBarcodeListener(
       onBarcodeScanned: handleUsbBarcode,
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Yeni Ürün Ekle'),
-        elevation: 0,
-        actions: [
-          // Kaydet butonu
-          TextButton.icon(
-            onPressed: _isLoading ? null : _saveProduct,
-            icon: _isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        appBar: AppBar(
+          title: const Text('Yeni Ürün Ekle'),
+          elevation: 0,
+          actions: [
+            // Kaydet butonu
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                if (!authProvider.isAdmin) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _saveProduct,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
                     ),
-                  )
-                : const Icon(Icons.save, color: Colors.white),
-            label: const Text('Kaydet', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // Ürün Resmi Alanı
-              _buildImageSection(),
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save, color: Colors.white),
+                    label: const Text(
+                      'Kaydet',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // Ürün Resmi Alanı
+                _buildImageSection(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Ürün Bilgileri
-              _buildProductInfoSection(),
+                // Ürün Bilgileri
+                _buildProductInfoSection(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Fiyat ve Stok Bilgileri
-              _buildPriceStockSection(),
+                // Fiyat ve Stok Bilgileri
+                _buildPriceStockSection(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Barkod Alanı
-              _buildBarcodeSection(),
+                // Barkod Alanı
+                _buildBarcodeSection(),
 
-              const SizedBox(height: 32),
-            ],
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
@@ -194,13 +207,14 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ürün Fotoğrafı',
+              'Ürün Fotoğrafları',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             ImagePickerWidget(
+              key: _imagePickerKey,
               initialImageUrls: _imageUrls,
               onImagesChanged: (urls) {
                 setState(() {
@@ -298,7 +312,7 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
               controller: _descriptionController,
               decoration: const InputDecoration(
                 labelText: 'Açıklama',
-                hintText: 'Ürün açıklaması...',
+                hintText: 'Ürün hakkında ek bilgiler...',
                 prefixIcon: Icon(Icons.description),
               ),
               maxLines: 3,
@@ -309,6 +323,27 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
     );
   }
 
+  String get stockLabel {
+    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
+      return 'Mevcut Stok *';
+    }
+    return 'Kaç ${_selectedUnit!.toLowerCase()} *';
+  }
+
+  String get minStockLabel {
+    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
+      return 'Min. Stok';
+    }
+    return 'Min. ${_selectedUnit!.toLowerCase()}';
+  }
+
+  String get priceLabel {
+    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
+      return 'Birim Fiyat (₺) *';
+    }
+    return '${_selectedUnit!} başına fiyat (₺) *';
+  }
+
   Widget _buildPriceStockSection() {
     return Card(
       child: Padding(
@@ -317,14 +352,12 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Fiyat ve Stok',
+              'Fiyat ve Stok Bilgileri',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-
-            // Fiyat ve Birim (Aynı satırda)
             Row(
               children: [
                 // Fiyat
@@ -355,9 +388,7 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
                     },
                   ),
                 ),
-
                 const SizedBox(width: 16),
-
                 // Birim
                 Expanded(
                   flex: 1,
@@ -393,9 +424,7 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             // Stok ve Minimum Stok (Aynı satırda)
             Row(
               children: [
@@ -425,9 +454,7 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
                     },
                   ),
                 ),
-
                 const SizedBox(width: 16),
-
                 // Minimum Stok
                 Expanded(
                   child: TextFormField(
@@ -474,7 +501,7 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
                 Expanded(
                   child: TextFormField(
                     controller: _barcodeController,
-                    autofocus: false, // Manuel focus control
+                    autofocus: false,
                     decoration: InputDecoration(
                       labelText: 'Barkod (USB cihaz destekli)',
                       hintText: 'Barkod numarası',
@@ -539,19 +566,6 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
     return allImageUrls;
   }
 
-  @override
-  void onUsbBarcodeReceived(String barcode) {
-    // USB barkod cihazından gelen barkodu işle
-    setState(() {
-      _barcodeController.text = barcode;
-    });
-    
-    showBarcodeSuccess(barcode);
-    
-    // Focus'u barkod alanından bir sonraki alana geçir
-    FocusScope.of(context).nextFocus();
-  }
-
   void _scanBarcode() async {
     final result = await Navigator.push<String>(
       context,
@@ -584,45 +598,41 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final productProvider = Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      );
-
       // Fotoğrafları yükle
       final imageUrls = await _uploadAllImages();
 
-      // Fiyatı parse et
-      double price = double.parse(_priceController.text.replaceAll(',', '.'));
-      double stock = double.parse(_stockController.text);
-      double? minStock = _minStockController.text.isNotEmpty
-          ? double.parse(_minStockController.text)
-          : null;
-
+      // Ürün verisini hazırla
       final productData = {
         'name': _nameController.text.trim(),
         'brand': _brandController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'price': price,
+        'price': double.parse(_priceController.text.replaceAll(',', '.')),
         'unit': _selectedUnit!,
-        'stock': stock,
-        'minStock': minStock ?? 5.0,
-        'category': _selectedCategory!,
+        'stock': double.parse(_stockController.text),
+        'minStock': double.parse(
+          _minStockController.text.isEmpty ? '5' : _minStockController.text,
+        ),
         'barcode': _barcodeController.text.trim(),
+        'category': _selectedCategory!,
         'imageUrls': imageUrls,
+        'isActive': true,
         'createdAt': DateTime.now(),
         'updatedAt': DateTime.now(),
-        'createdBy': authProvider.currentUser?.id ?? '',
-        'isActive': true,
+        'createdBy':
+            Provider.of<AuthProvider>(context, listen: false).currentUser?.id ??
+            '',
       };
 
-      await productProvider.addProduct(productData);
+      // Ürünü kaydet
+      await Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).addProduct(productData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Ürün başarıyla eklendi!'),
+            content: Text('Ürün başarıyla eklendi'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -646,8 +656,5 @@ class _AddProductScreenState extends State<AddProductScreen> with UsbBarcodeHand
         });
       }
     }
-  }
-      ), // UsbBarcodeListener kapanışı
-    ); // Scaffold kapanışı
   }
 }
