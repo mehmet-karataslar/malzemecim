@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/models/product_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../providers/product_provider.dart';
+import 'add_product_screen.dart';
+import 'edit_product_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -17,42 +21,178 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final List<String> _categories = [
     'Tümü',
     'Nalburiye',
-    'Hırdavat',
     'Boya',
     'Elektrik',
     'Tesisat',
+    'Hırdavat',
+    'Bahçe',
     'İnşaat',
-    'Kurulum',
-    'Genel',
+    'Otomotiv',
+    'Temizlik',
+    'Diğer',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Ürünleri yükle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProductProvider>(context, listen: false).loadProducts();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ürünler'),
+        elevation: 0,
         actions: [
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              if (authProvider.isAdmin) {
-                return IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showAddProductDialog,
-                );
-              }
-              return const SizedBox.shrink();
+          // Düşük stok uyarısı
+          Consumer<ProductProvider>(
+            builder: (context, productProvider, child) {
+              final lowStockCount = productProvider
+                  .getLowStockProducts()
+                  .length;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.warning),
+                    onPressed: lowStockCount > 0 ? _showLowStockDialog : null,
+                  ),
+                  if (lowStockCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.errorColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$lowStockCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search and Filter
+          // Arama ve Filtreleme
           _buildSearchAndFilter(),
 
-          // Products List
-          Expanded(child: _buildProductsList()),
+          // Ürün Listesi
+          Expanded(
+            child: Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (productProvider.errorMessage != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          productProvider.errorMessage!,
+                          style: TextStyle(color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => productProvider.loadProducts(),
+                          child: const Text('Tekrar Dene'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                List<ProductModel> products = _getFilteredProducts(
+                  productProvider,
+                );
+
+                if (products.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchController.text.isNotEmpty
+                              ? 'Arama kriterlerine uygun ürün bulunamadı'
+                              : 'Henüz ürün eklenmemiş',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        if (_searchController.text.isEmpty) ...[
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _addProduct,
+                            icon: const Icon(Icons.add),
+                            label: const Text('İlk Ürünü Ekle'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () => productProvider.loadProducts(),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      return _buildProductCard(products[index]);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
         ],
+      ),
+      floatingActionButton: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          if (!authProvider.isAdmin) return const SizedBox.shrink();
+
+          return FloatingActionButton(
+            onPressed: _addProduct,
+            child: const Icon(Icons.add),
+          );
+        },
       ),
     );
   }
@@ -60,9 +200,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget _buildSearchAndFilter() {
     return Container(
       padding: const EdgeInsets.all(16),
+      color: Colors.grey[50],
       child: Column(
         children: [
-          // Search Bar
+          // Arama çubuğu
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
@@ -77,18 +218,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       },
                     )
                   : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: Colors.white,
             ),
             onChanged: (value) => setState(() {}),
           ),
 
           const SizedBox(height: 12),
 
-          // Category Filter
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _categories.map((category) {
+          // Kategori filtresi
+          SizedBox(
+            height: 40,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
                 final isSelected = _selectedCategory == category;
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
@@ -99,11 +249,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         _selectedCategory = category;
                       });
                     },
-                    backgroundColor: AppTheme.surfaceColor,
+                    backgroundColor: Colors.white,
                     selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+                    checkmarkColor: AppTheme.primaryColor,
                   ),
                 );
-              }).toList(),
+              },
             ),
           ),
         ],
@@ -111,106 +262,62 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  Widget _buildProductsList() {
-    // Mock data - gerçek implementasyonda Firebase'den gelecek
-    final mockProducts = [
-      {
-        'name': 'Vida M8x20',
-        'brand': 'Koçtaş',
-        'price': 2.50,
-        'stock': 150,
-        'unit': 'adet',
-        'category': 'Nalburiye',
-        'barcode': '1234567890123',
-      },
-      {
-        'name': 'Dış Cephe Boyası',
-        'brand': 'Marshall',
-        'price': 285.00,
-        'stock': 8,
-        'unit': 'litre',
-        'category': 'Boya',
-        'barcode': '2345678901234',
-      },
-      {
-        'name': 'Elektrik Kablosu 2.5mm',
-        'brand': 'Nexans',
-        'price': 12.75,
-        'stock': 250,
-        'unit': 'metre',
-        'category': 'Elektrik',
-        'barcode': '3456789012345',
-      },
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: mockProducts.length,
-      itemBuilder: (context, index) {
-        final product = mockProducts[index];
-        return _buildProductCard(product);
-      },
-    );
-  }
-
-  Widget _buildProductCard(Map<String, dynamic> product) {
-    final lowStock = (product['stock'] as int) < 20;
+  Widget _buildProductCard(ProductModel product) {
+    final isLowStock = product.stock <= product.minStock;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.inventory_2,
-            color: AppTheme.primaryColor,
-            size: 30,
+        leading: CircleAvatar(
+          backgroundColor: AppTheme.primaryColor,
+          child: Text(
+            product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         title: Text(
-          product['name'],
+          product.name,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${product['brand']} • ${product['category']}'),
-            const SizedBox(height: 4),
+            if (product.brand.isNotEmpty) ...[
+              Text(product.brand),
+              const SizedBox(height: 4),
+            ],
             Row(
               children: [
-                Text(
-                  '₺${product['price'].toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isLowStock
+                        ? AppTheme.errorColor
+                        : AppTheme.successColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${product.stock.toStringAsFixed(product.stock == product.stock.toInt() ? 0 : 1)} ${product.unit}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text('/ ${product['unit']}'),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.inventory,
-                  size: 16,
-                  color: lowStock ? AppTheme.errorColor : AppTheme.successColor,
-                ),
-                const SizedBox(width: 4),
                 Text(
-                  'Stok: ${product['stock']} ${product['unit']}',
-                  style: TextStyle(
-                    color: lowStock
-                        ? AppTheme.errorColor
-                        : AppTheme.successColor,
-                    fontWeight: FontWeight.w500,
+                  '₺${product.price.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
                   ),
                 ),
               ],
@@ -260,62 +367,94 @@ class _ProductsScreenState extends State<ProductsScreen> {
             );
           },
         ),
+        onTap: () => _showProductDetails(product),
       ),
     );
   }
 
-  void _handleProductAction(String action, Map<String, dynamic> product) {
+  List<ProductModel> _getFilteredProducts(ProductProvider productProvider) {
+    List<ProductModel> products = productProvider.products;
+
+    // Kategori filtresi
+    if (_selectedCategory != 'Tümü') {
+      products = productProvider.getProductsByCategory(_selectedCategory);
+    }
+
+    // Arama filtresi
+    if (_searchController.text.isNotEmpty) {
+      products = productProvider.searchProducts(_searchController.text);
+    }
+
+    return products;
+  }
+
+  void _addProduct() async {
+    final result = await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const AddProductScreen()));
+
+    if (result == true) {
+      // Liste güncellendi, yenile
+      if (mounted) {
+        Provider.of<ProductProvider>(context, listen: false).loadProducts();
+      }
+    }
+  }
+
+  void _handleProductAction(String action, ProductModel product) {
     switch (action) {
       case 'view':
         _showProductDetails(product);
         break;
       case 'edit':
-        _showEditProductDialog(product);
+        _editProduct(product);
         break;
       case 'stock':
-        _showStockUpdateDialog(product);
+        _updateStock(product);
         break;
       case 'delete':
-        _showDeleteConfirmation(product);
+        _deleteProduct(product);
         break;
     }
   }
 
-  void _showAddProductDialog() {
+  void _showProductDetails(ProductModel product) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Yeni Ürün Ekle'),
-        content: const Text('Ürün ekleme formu yakında gelecek...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tamam'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProductDetails(Map<String, dynamic> product) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(product['name']),
+        title: Text(product.name),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Marka: ${product['brand']}'),
-            Text('Kategori: ${product['category']}'),
-            Text('Fiyat: ₺${product['price'].toStringAsFixed(2)}'),
-            Text('Stok: ${product['stock']} ${product['unit']}'),
-            Text('Barkod: ${product['barcode']}'),
+            if (product.brand.isNotEmpty) ...[
+              Text('Marka: ${product.brand}'),
+              const SizedBox(height: 8),
+            ],
+            Text('Kategori: ${product.category}'),
+            const SizedBox(height: 8),
+            Text(
+              'Fiyat: ₺${product.price.toStringAsFixed(2)} / ${product.unit}',
+            ),
+            const SizedBox(height: 8),
+            Text('Stok: ${product.stock} ${product.unit}'),
+            const SizedBox(height: 8),
+            Text('Min. Stok: ${product.minStock} ${product.unit}'),
+            if (product.barcode.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Barkod: ${product.barcode}'),
+            ],
+            if (product.description.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Açıklama:', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(product.description),
+            ],
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Kapat'),
           ),
         ],
@@ -323,40 +462,191 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  void _showEditProductDialog(Map<String, dynamic> product) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ürün düzenleme özelliği yakında...')),
+  void _editProduct(ProductModel product) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditProductScreen(product: product),
+      ),
+    );
+
+    if (result == true) {
+      // Liste güncellendi, yenile
+      if (mounted) {
+        Provider.of<ProductProvider>(context, listen: false).loadProducts();
+      }
+    }
+  }
+
+  void _updateStock(ProductModel product) {
+    final stockController = TextEditingController(
+      text: product.stock.toString(),
+    );
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${product.name} - Stok Güncelle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: stockController,
+              decoration: InputDecoration(
+                labelText: 'Yeni Stok Miktarı',
+                suffixText: product.unit,
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Güncelleme Sebebi',
+                hintText: 'Örnek: Sayım düzeltmesi',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newStock = double.tryParse(stockController.text);
+              if (newStock != null) {
+                try {
+                  await Provider.of<ProductProvider>(
+                    context,
+                    listen: false,
+                  ).updateStock(
+                    product.id,
+                    newStock,
+                    reasonController.text.isEmpty
+                        ? 'Manuel güncelleme'
+                        : reasonController.text,
+                  );
+
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Stok başarıyla güncellendi'),
+                        backgroundColor: AppTheme.successColor,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Hata: $e'),
+                        backgroundColor: AppTheme.errorColor,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Güncelle'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _showStockUpdateDialog(Map<String, dynamic> product) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Stok güncelleme özelliği yakında...')),
-    );
-  }
-
-  void _showDeleteConfirmation(Map<String, dynamic> product) {
+  void _deleteProduct(ProductModel product) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ürün Sil'),
         content: Text(
-          '${product['name']} ürününü silmek istediğinizden emin misiniz?',
+          '${product.name} ürününü silmek istediğinizden emin misiniz?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('İptal'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ürün silme özelliği yakında...')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            onPressed: () async {
+              try {
+                await Provider.of<ProductProvider>(
+                  context,
+                  listen: false,
+                ).deleteProduct(product.id);
+
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Ürün başarıyla silindi'),
+                      backgroundColor: AppTheme.successColor,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Hata: $e'),
+                      backgroundColor: AppTheme.errorColor,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLowStockDialog() {
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
+    final lowStockProducts = productProvider.getLowStockProducts();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: AppTheme.errorColor),
+            SizedBox(width: 8),
+            Text('Düşük Stok Uyarısı'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: lowStockProducts.length,
+            itemBuilder: (context, index) {
+              final product = lowStockProducts[index];
+              return ListTile(
+                title: Text(product.name),
+                subtitle: Text('${product.stock} ${product.unit} kaldı'),
+                trailing: Text(
+                  'Min: ${product.minStock}',
+                  style: const TextStyle(color: AppTheme.errorColor),
+                ),
               );
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sil'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Kapat'),
           ),
         ],
       ),

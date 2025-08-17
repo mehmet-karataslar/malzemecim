@@ -55,6 +55,53 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Kayıt ol
+  Future<bool> registerUser({
+    required String email,
+    required String password,
+    required String name,
+    required String businessName,
+  }) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      // Firebase Auth'da kullanıcı oluştur
+      UserCredential result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (result.user != null) {
+        // Firestore'da kullanıcı profili oluştur
+        await _firestore.collection('users').doc(result.user!.uid).set({
+          'email': email,
+          'name': name,
+          'businessName': businessName,
+          'role': 'admin', // İlk kayıt olan kullanıcı admin olur
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+          'isActive': true,
+        });
+
+        // Kullanıcı verilerini yükle
+        await _loadUserData(result.user!.uid);
+        return true;
+      }
+      return false;
+    } on FirebaseAuthException catch (e) {
+      _handleAuthError(e);
+      return false;
+    } catch (e) {
+      _errorMessage = 'Kayıt işlemi sırasında hata oluştu: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Email ile giriş
   Future<bool> signInWithEmail(String email, String password) async {
     try {
@@ -77,52 +124,6 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       _errorMessage = 'Giriş yapılırken hata oluştu: $e';
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Yeni kullanıcı kaydı (sadece admin yapabilir)
-  Future<bool> registerUser({
-    required String email,
-    required String password,
-    required String name,
-    required String role,
-  }) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
-
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      if (result.user != null) {
-        UserModel newUser = UserModel(
-          id: result.user!.uid,
-          email: email,
-          name: name,
-          role: role,
-          createdAt: DateTime.now(),
-        );
-
-        await _firestore
-            .collection(AppConstants.usersCollection)
-            .doc(result.user!.uid)
-            .set(newUser.toFirestore());
-
-        return true;
-      }
-      return false;
-    } on FirebaseAuthException catch (e) {
-      _handleAuthError(e);
-      return false;
-    } catch (e) {
-      _errorMessage = 'Kullanıcı kaydı oluşturulurken hata oluştu: $e';
       return false;
     } finally {
       _isLoading = false;

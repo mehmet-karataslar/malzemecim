@@ -9,6 +9,8 @@ class ProductModel {
   final String description;
   final double price;
   final String unit; // adet, kg, litre, metre, m², m³
+  final double stock; // Mevcut stok miktarı
+  final double minStock; // Minimum stok uyarı seviyesi
   final List<String> imageUrls;
   final String category;
   final DateTime createdAt;
@@ -26,6 +28,8 @@ class ProductModel {
     required this.description,
     required this.price,
     required this.unit,
+    required this.stock,
+    required this.minStock,
     this.imageUrls = const [],
     this.category = 'Genel',
     required this.createdAt,
@@ -46,6 +50,8 @@ class ProductModel {
       description: data['description'] ?? '',
       price: (data['price'] ?? 0.0).toDouble(),
       unit: data['unit'] ?? 'adet',
+      stock: (data['stock'] ?? 0.0).toDouble(),
+      minStock: (data['minStock'] ?? 5.0).toDouble(),
       imageUrls: List<String>.from(data['imageUrls'] ?? []),
       category: data['category'] ?? 'Genel',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
@@ -65,6 +71,8 @@ class ProductModel {
       'description': description,
       'price': price,
       'unit': unit,
+      'stock': stock,
+      'minStock': minStock,
       'imageUrls': imageUrls,
       'category': category,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -84,6 +92,8 @@ class ProductModel {
     String? description,
     double? price,
     String? unit,
+    double? stock,
+    double? minStock,
     List<String>? imageUrls,
     String? category,
     DateTime? createdAt,
@@ -101,6 +111,8 @@ class ProductModel {
       description: description ?? this.description,
       price: price ?? this.price,
       unit: unit ?? this.unit,
+      stock: stock ?? this.stock,
+      minStock: minStock ?? this.minStock,
       imageUrls: imageUrls ?? this.imageUrls,
       category: category ?? this.category,
       createdAt: createdAt ?? this.createdAt,
