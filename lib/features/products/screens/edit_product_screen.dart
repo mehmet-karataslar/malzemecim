@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/widgets/image_picker_widget.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/product_provider.dart';
 
@@ -28,25 +31,48 @@ class _EditProductScreenState extends State<EditProductScreen> {
   String? _selectedUnit;
   String? _selectedCategory;
   bool _isLoading = false;
+  List<String> _imageUrls = [];
+  List<File> _localImages = [];
+
+  // Dinamik label getters
+  String get stockLabel {
+    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
+      return 'Mevcut Stok *';
+    }
+    return 'Kaç ${_selectedUnit!.toLowerCase()} *';
+  }
+
+  String get minStockLabel {
+    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
+      return 'Min. Stok';
+    }
+    return 'Min. ${_selectedUnit!.toLowerCase()}';
+  }
+
+  String get priceLabel {
+    if (_selectedUnit == null || _selectedUnit!.isEmpty) {
+      return 'Birim Fiyat (₺) *';
+    }
+    return '${_selectedUnit!} başına fiyat (₺) *';
+  }
 
   // Birim seçenekleri
   final List<String> _units = [
     'Adet',
     'Metre',
-    'Santimetre',
-    'Milimetre',
-    'Kilogram',
+    'CM',
+    'MM',
+    'KG',
     'Gram',
     'Litre',
-    'Mililitre',
-    'Metrekare',
-    'Metreküp',
+    'ML',
+    'M²',
+    'M³',
     'Koli',
     'Paket',
     'Takım',
     'Çift',
     'Düzine',
-    'Gross',
     'Ton',
   ];
 
@@ -86,6 +112,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
     _selectedUnit = widget.product.unit;
     _selectedCategory = widget.product.category;
+    _imageUrls = List.from(widget.product.imageUrls);
   }
 
   @override
@@ -130,6 +157,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
+              // Ürün Fotoğrafları
+              _buildPhotoSection(),
+
+              const SizedBox(height: 24),
+
               // Ürün Bilgileri
               _buildProductInfoSection(),
 
@@ -146,6 +178,40 @@ class _EditProductScreenState extends State<EditProductScreen> {
               const SizedBox(height: 32),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ürün Fotoğrafları',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ImagePickerWidget(
+              initialImageUrls: _imageUrls,
+              onImagesChanged: (urls) {
+                setState(() {
+                  _imageUrls = urls;
+                });
+              },
+              onLocalImagesChanged: (files) {
+                setState(() {
+                  _localImages = files;
+                });
+              },
+              maxImages: 5,
+            ),
+          ],
         ),
       ),
     );
@@ -263,10 +329,10 @@ class _EditProductScreenState extends State<EditProductScreen> {
                   flex: 2,
                   child: TextFormField(
                     controller: _priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Birim Fiyat *',
+                    decoration: InputDecoration(
+                      labelText: priceLabel,
                       hintText: '0.00',
-                      prefixIcon: Icon(Icons.attach_money),
+                      prefixIcon: const Icon(Icons.attach_money),
                       suffixText: '₺',
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
@@ -291,12 +357,18 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
                 // Birim
                 Expanded(
+                  flex: 1,
                   child: DropdownButtonFormField<String>(
                     value: _selectedUnit,
                     decoration: const InputDecoration(
                       labelText: 'Birim *',
                       prefixIcon: Icon(Icons.straighten),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
                     ),
+                    isExpanded: true,
                     items: _units.map((String unit) {
                       return DropdownMenuItem<String>(
                         value: unit,
@@ -328,10 +400,12 @@ class _EditProductScreenState extends State<EditProductScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _stockController,
-                    decoration: const InputDecoration(
-                      labelText: 'Mevcut Stok *',
-                      hintText: '0',
-                      prefixIcon: Icon(Icons.inventory_2),
+                    decoration: InputDecoration(
+                      labelText: stockLabel,
+                      hintText: _selectedUnit != null
+                          ? '0 ${_selectedUnit!.toLowerCase()}'
+                          : '0',
+                      prefixIcon: const Icon(Icons.inventory_2),
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
@@ -355,10 +429,12 @@ class _EditProductScreenState extends State<EditProductScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _minStockController,
-                    decoration: const InputDecoration(
-                      labelText: 'Min. Stok',
-                      hintText: '5',
-                      prefixIcon: Icon(Icons.warning),
+                    decoration: InputDecoration(
+                      labelText: minStockLabel,
+                      hintText: _selectedUnit != null
+                          ? '5 ${_selectedUnit!.toLowerCase()}'
+                          : '5',
+                      prefixIcon: const Icon(Icons.warning),
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
@@ -404,6 +480,36 @@ class _EditProductScreenState extends State<EditProductScreen> {
     );
   }
 
+  Future<String?> _uploadImageToFirebase(File imageFile) async {
+    try {
+      final fileName =
+          'products/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+
+      final uploadTask = ref.putFile(imageFile);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      print('Firebase Storage yükleme hatası: $e');
+      return null;
+    }
+  }
+
+  Future<List<String>> _uploadAllImages() async {
+    List<String> allImageUrls = List.from(_imageUrls);
+
+    for (File imageFile in _localImages) {
+      final url = await _uploadImageToFirebase(imageFile);
+      if (url != null) {
+        allImageUrls.add(url);
+      }
+    }
+
+    return allImageUrls;
+  }
+
   Future<void> _updateProduct() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -419,6 +525,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
         context,
         listen: false,
       );
+
+      // Fotoğrafları yükle
+      final imageUrls = await _uploadAllImages();
 
       // Fiyatı parse et
       double price = double.parse(_priceController.text.replaceAll(',', '.'));
@@ -437,6 +546,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
         'minStock': minStock ?? 5.0,
         'category': _selectedCategory!,
         'barcode': _barcodeController.text.trim(),
+        'imageUrls': imageUrls,
         'updatedAt': DateTime.now(),
         'updatedBy': authProvider.currentUser?.id ?? '',
       };

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../shared/widgets/product_image_widget.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/product_provider.dart';
 import 'add_product_screen.dart';
@@ -17,6 +19,9 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'Tümü';
+  Timer? _debounceTimer;
+  List<ProductModel> _filteredProducts = [];
+  bool _isSearchActive = false;
 
   final List<String> _categories = [
     'Tümü',
@@ -37,13 +42,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
     super.initState();
     // Ürünleri yükle
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ProductProvider>(context, listen: false).loadProducts();
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
+      productProvider.loadProducts().then((_) {
+        if (mounted) {
+          _updateFilteredProducts();
+        }
+      });
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -207,14 +221,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Ürün ara...',
+              hintText: 'Ürün adı, marka, barkod veya kategori ara...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         _searchController.clear();
-                        setState(() {});
+                        _onSearchChanged('');
                       },
                     )
                   : null,
@@ -224,7 +238,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
               filled: true,
               fillColor: Colors.white,
             ),
-            onChanged: (value) => setState(() {}),
+            onChanged: _onSearchChanged,
+            textInputAction: TextInputAction.search,
           ),
 
           const SizedBox(height: 12),
@@ -248,6 +263,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       setState(() {
                         _selectedCategory = category;
                       });
+                      _updateFilteredProducts();
                     },
                     backgroundColor: Colors.white,
                     selectedColor: AppTheme.primaryColor.withOpacity(0.2),
@@ -269,14 +285,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryColor,
-          child: Text(
-            product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+        leading: GestureDetector(
+          onTap: product.imageUrls.isNotEmpty
+              ? () => _showProductImages(product)
+              : null,
+          child: ProductImageWidget(
+            product: product,
+            size: 60,
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
         title: Text(
@@ -372,7 +388,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  List<ProductModel> _getFilteredProducts(ProductProvider productProvider) {
+  void _onSearchChanged(String value) {
+    // Debounce arama işlemini optimize etmek için
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _updateFilteredProducts();
+      }
+    });
+  }
+
+  void _updateFilteredProducts() {
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
     List<ProductModel> products = productProvider.products;
 
     // Kategori filtresi
@@ -382,10 +412,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     // Arama filtresi
     if (_searchController.text.isNotEmpty) {
-      products = productProvider.searchProducts(_searchController.text);
+      final searchQuery = _searchController.text.trim();
+      if (searchQuery.length >= 1) {
+        _isSearchActive = true;
+        // Kategori filtresine ek olarak arama da uygula
+        if (_selectedCategory != 'Tümü') {
+          // Önce kategori filtresi uygula, sonra arama
+          final categoryProducts = productProvider.getProductsByCategory(
+            _selectedCategory,
+          );
+          products = categoryProducts.where((product) {
+            final query = searchQuery.toLowerCase();
+            return product.name.toLowerCase().contains(query) ||
+                product.brand.toLowerCase().contains(query) ||
+                product.category.toLowerCase().contains(query) ||
+                product.barcode.contains(query) ||
+                product.description.toLowerCase().contains(query);
+          }).toList();
+        } else {
+          // Sadece arama filtresi
+          products = productProvider.searchProducts(searchQuery);
+        }
+      } else {
+        _isSearchActive = false;
+      }
+    } else {
+      _isSearchActive = false;
     }
 
-    return products;
+    setState(() {
+      _filteredProducts = products;
+    });
+  }
+
+  List<ProductModel> _getFilteredProducts(ProductProvider productProvider) {
+    // Optimize edilmiş filtreleme için cached results kullan
+    return _filteredProducts.isEmpty &&
+            !_isSearchActive &&
+            _selectedCategory == 'Tümü'
+        ? productProvider.products
+        : _filteredProducts;
   }
 
   void _addProduct() async {
@@ -396,7 +462,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (result == true) {
       // Liste güncellendi, yenile
       if (mounted) {
-        Provider.of<ProductProvider>(context, listen: false).loadProducts();
+        Provider.of<ProductProvider>(
+          context,
+          listen: false,
+        ).loadProducts().then((_) {
+          _updateFilteredProducts();
+        });
       }
     }
   }
@@ -608,6 +679,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  void _showProductImages(ProductModel product) {
+    if (product.imageUrls.isEmpty) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ProductImageFullScreen(
+          imageUrls: product.imageUrls,
+          productName: product.name,
+        ),
+      ),
+    );
+  }
+
   void _showLowStockDialog() {
     final productProvider = Provider.of<ProductProvider>(
       context,
@@ -633,6 +717,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             itemBuilder: (context, index) {
               final product = lowStockProducts[index];
               return ListTile(
+                leading: ProductImageWidget(product: product, size: 40),
                 title: Text(product.name),
                 subtitle: Text('${product.stock} ${product.unit} kaldı'),
                 trailing: Text(

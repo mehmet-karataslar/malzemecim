@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/models/product_model.dart';
+import '../../../shared/widgets/product_image_widget.dart';
+import '../../products/providers/product_provider.dart';
+import '../../products/screens/edit_product_screen.dart';
+import '../../../shared/providers/auth_provider.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -10,21 +16,38 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
+  List<ProductModel> _searchResults = [];
+  bool _hasSearched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ürünleri yükle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProductProvider>(context, listen: false).loadProducts();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Arama')),
+      appBar: AppBar(title: const Text('Ürün Arama'), elevation: 0),
       body: Column(
         children: [
           // Search Input
           Container(
             padding: const EdgeInsets.all(16),
+            color: Colors.grey[50],
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Ürün adı, marka, barkod veya SKU...',
+                hintText: 'Ürün adı, marka, barkod veya kategori...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -32,24 +55,78 @@ class _SearchScreenState extends State<SearchScreen> {
                         onPressed: () {
                           _searchController.clear();
                           setState(() {
-                            _isSearching = false;
+                            _searchResults.clear();
+                            _hasSearched = false;
                           });
                         },
                       )
                     : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.white,
               ),
               onChanged: (value) {
-                setState(() {
-                  _isSearching = value.isNotEmpty;
-                });
+                // Gerçek zamanlı arama
+                if (value.isNotEmpty && value.length >= 2) {
+                  _performSearch(value);
+                } else if (value.isEmpty) {
+                  setState(() {
+                    _searchResults.clear();
+                    _hasSearched = false;
+                  });
+                }
               },
               onSubmitted: _performSearch,
             ),
           ),
 
-          // Search Results or Empty State
+          // Search Results or States
           Expanded(
-            child: _isSearching ? _buildSearchResults() : _buildEmptyState(),
+            child: Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.isLoading && !_hasSearched) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (productProvider.errorMessage != null && !_hasSearched) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          productProvider.errorMessage!,
+                          style: TextStyle(color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => productProvider.loadProducts(),
+                          child: const Text('Tekrar Dene'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (!_hasSearched && _searchController.text.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                if (_hasSearched && _searchResults.isEmpty) {
+                  return _buildNoResultsState();
+                }
+
+                return _buildSearchResults();
+              },
+            ),
           ),
         ],
       ),
@@ -68,113 +145,360 @@ class _SearchScreenState extends State<SearchScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Ürün adı, marka, barkod veya\nkategori ile arama yapabilirsiniz',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'Arama kriterlerine uygun\nürün bulunamadı',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '"${_searchController.text}" için sonuç yok',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildSearchResults() {
-    // Mock search results
-    final mockResults = [
-      {
-        'name': 'Vida M8x20',
-        'brand': 'Koçtaş',
-        'price': 2.50,
-        'stock': 150,
-        'unit': 'adet',
-        'barcode': '1234567890123',
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Provider.of<ProductProvider>(
+          context,
+          listen: false,
+        ).loadProducts();
+        if (_searchController.text.isNotEmpty) {
+          _performSearch(_searchController.text);
+        }
       },
-      {
-        'name': 'Dış Cephe Boyası',
-        'brand': 'Marshall',
-        'price': 285.00,
-        'stock': 8,
-        'unit': 'litre',
-        'barcode': '2345678901234',
-      },
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: mockResults.length,
-      itemBuilder: (context, index) {
-        final product = mockResults[index];
-        return _buildSearchResultCard(product);
-      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _searchResults.length,
+        itemBuilder: (context, index) {
+          final product = _searchResults[index];
+          return _buildSearchResultCard(product);
+        },
+      ),
     );
   }
 
-  Widget _buildSearchResultCard(Map<String, dynamic> product) {
+  Widget _buildSearchResultCard(ProductModel product) {
+    final isLowStock = product.stock <= product.minStock;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
+        contentPadding: const EdgeInsets.all(16),
+        leading: GestureDetector(
+          onTap: product.imageUrls.isNotEmpty
+              ? () => _showProductImages(product)
+              : null,
+          child: ProductImageWidget(
+            product: product,
+            size: 60,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(Icons.inventory_2, color: AppTheme.primaryColor),
         ),
         title: Text(
-          product['name'],
+          product.name,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${product['brand']}'),
+            if (product.brand.isNotEmpty) ...[
+              Text(product.brand),
+              const SizedBox(height: 4),
+            ],
+            Text('Kategori: ${product.category}'),
             const SizedBox(height: 4),
             Row(
               children: [
-                Text(
-                  '₺${product['price'].toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isLowStock
+                        ? AppTheme.errorColor
+                        : AppTheme.successColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${product.stock.toStringAsFixed(product.stock == product.stock.toInt() ? 0 : 1)} ${product.unit}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text('• Stok: ${product['stock']} ${product['unit']}'),
+                Text(
+                  '₺${product.price.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
               ],
             ),
+            if (product.barcode.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Barkod: ${product.barcode}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
           ],
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            return PopupMenuButton<String>(
+              onSelected: (value) => _handleProductAction(value, product),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'view',
+                  child: ListTile(
+                    leading: Icon(Icons.visibility),
+                    title: Text('Görüntüle'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                if (authProvider.isAdmin) ...[
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      leading: Icon(Icons.edit),
+                      title: Text('Düzenle'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'stock',
+                    child: ListTile(
+                      leading: Icon(Icons.inventory),
+                      title: Text('Stok Güncelle'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
         onTap: () => _showProductDetails(product),
       ),
     );
   }
 
   void _performSearch(String query) {
-    // TODO: Implement search functionality
-    ScaffoldMessenger.of(
+    if (query.trim().isEmpty) return;
+
+    final productProvider = Provider.of<ProductProvider>(
       context,
-    ).showSnackBar(SnackBar(content: Text('Aranıyor: $query')));
+      listen: false,
+    );
+    final searchResults = productProvider.searchProducts(query.trim());
+
+    setState(() {
+      _searchResults = searchResults;
+      _hasSearched = true;
+    });
   }
 
-  void _showProductDetails(Map<String, dynamic> product) {
+  void _handleProductAction(String action, ProductModel product) {
+    switch (action) {
+      case 'view':
+        _showProductDetails(product);
+        break;
+      case 'edit':
+        _editProduct(product);
+        break;
+      case 'stock':
+        _updateStock(product);
+        break;
+    }
+  }
+
+  void _showProductDetails(ProductModel product) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(product['name']),
+        title: Text(product.name),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Marka: ${product['brand']}'),
-            Text('Fiyat: ₺${product['price'].toStringAsFixed(2)}'),
-            Text('Stok: ${product['stock']} ${product['unit']}'),
-            Text('Barkod: ${product['barcode']}'),
+            if (product.brand.isNotEmpty) ...[
+              Text('Marka: ${product.brand}'),
+              const SizedBox(height: 8),
+            ],
+            Text('Kategori: ${product.category}'),
+            const SizedBox(height: 8),
+            Text(
+              'Fiyat: ₺${product.price.toStringAsFixed(2)} / ${product.unit}',
+            ),
+            const SizedBox(height: 8),
+            Text('Stok: ${product.stock} ${product.unit}'),
+            const SizedBox(height: 8),
+            Text('Min. Stok: ${product.minStock} ${product.unit}'),
+            if (product.barcode.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Barkod: ${product.barcode}'),
+            ],
+            if (product.description.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Açıklama:', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(product.description),
+            ],
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Kapat'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _editProduct(ProductModel product) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditProductScreen(product: product),
+      ),
+    );
+
+    if (result == true) {
+      // Liste güncellendi, yenile
+      if (mounted) {
+        await Provider.of<ProductProvider>(
+          context,
+          listen: false,
+        ).loadProducts();
+        if (_searchController.text.isNotEmpty) {
+          _performSearch(_searchController.text);
+        }
+      }
+    }
+  }
+
+  void _updateStock(ProductModel product) {
+    final stockController = TextEditingController(
+      text: product.stock.toString(),
+    );
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${product.name} - Stok Güncelle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: stockController,
+              decoration: InputDecoration(
+                labelText: 'Yeni Stok Miktarı',
+                suffixText: product.unit,
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Güncelleme Sebebi',
+                hintText: 'Örnek: Sayım düzeltmesi',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newStock = double.tryParse(stockController.text);
+              if (newStock != null) {
+                try {
+                  await Provider.of<ProductProvider>(
+                    context,
+                    listen: false,
+                  ).updateStock(
+                    product.id,
+                    newStock,
+                    reasonController.text.isEmpty
+                        ? 'Manuel güncelleme'
+                        : reasonController.text,
+                  );
+
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Stok başarıyla güncellendi'),
+                        backgroundColor: AppTheme.successColor,
+                      ),
+                    );
+                    // Arama sonuçlarını güncelle
+                    if (_searchController.text.isNotEmpty) {
+                      _performSearch(_searchController.text);
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Hata: $e'),
+                        backgroundColor: AppTheme.errorColor,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Güncelle'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showProductImages(ProductModel product) {
+    if (product.imageUrls.isEmpty) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ProductImageFullScreen(
+          imageUrls: product.imageUrls,
+          productName: product.name,
+        ),
       ),
     );
   }

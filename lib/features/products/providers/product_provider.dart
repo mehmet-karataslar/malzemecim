@@ -23,17 +23,44 @@ class ProductProvider with ChangeNotifier {
     return _products.where((product) => product.category == category).toList();
   }
 
-  // Arama
+  // Arama - Gelişmiş arama algoritması
   List<ProductModel> searchProducts(String query) {
     if (query.isEmpty) return _products;
 
-    query = query.toLowerCase();
-    return _products.where((product) {
-      return product.name.toLowerCase().contains(query) ||
-          product.brand.toLowerCase().contains(query) ||
-          product.category.toLowerCase().contains(query) ||
-          product.barcode.contains(query);
-    }).toList();
+    query = query.toLowerCase().trim();
+
+    // Tam eşleşme öncelikli sonuçlar
+    final exactMatches = <ProductModel>[];
+    final partialMatches = <ProductModel>[];
+
+    for (final product in _products) {
+      final name = product.name.toLowerCase();
+      final brand = product.brand.toLowerCase();
+      final category = product.category.toLowerCase();
+      final barcode = product.barcode.toLowerCase();
+      final description = product.description.toLowerCase();
+
+      // Tam eşleşme kontrolü (yüksek öncelik)
+      if (name == query ||
+          brand == query ||
+          category == query ||
+          barcode == query) {
+        exactMatches.add(product);
+        continue;
+      }
+
+      // Kısmi eşleşme kontrolü
+      if (name.contains(query) ||
+          brand.contains(query) ||
+          category.contains(query) ||
+          barcode.contains(query) ||
+          description.contains(query)) {
+        partialMatches.add(product);
+      }
+    }
+
+    // Tam eşleşmeleri önce, sonra kısmi eşleşmeleri döndür
+    return [...exactMatches, ...partialMatches];
   }
 
   // Düşük stok ürünleri
