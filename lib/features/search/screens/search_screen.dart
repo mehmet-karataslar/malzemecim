@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/widgets/product_image_widget.dart';
+import '../../../shared/widgets/usb_barcode_listener.dart';
+import '../../../shared/widgets/barcode_scanner_page.dart';
 import '../../products/providers/product_provider.dart';
 import '../../products/screens/edit_product_screen.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -14,7 +16,7 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
   final TextEditingController _searchController = TextEditingController();
   List<ProductModel> _searchResults = [];
   bool _hasSearched = false;
@@ -29,6 +31,35 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   @override
+  void onUsbBarcodeReceived(String barcode) {
+    // USB barkod ile direkt arama yap ve ürünü bul
+    _searchWithBarcode(barcode);
+  }
+
+  void _searchWithBarcode(String barcode) {
+    setState(() {
+      _searchController.text = barcode;
+    });
+    
+    _performSearch(barcode);
+    
+    showBarcodeSuccess(barcode);
+  }
+
+  void _scanBarcodeWithCamera() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BarcodeScannorPage(),
+      ),
+    );
+    
+    if (result != null && result.isNotEmpty) {
+      _searchWithBarcode(result);
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -36,7 +67,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return UsbBarcodeListener(
+      onBarcodeScanned: handleUsbBarcode,
+      child: Scaffold(
       appBar: AppBar(title: const Text('Ürün Arama'), elevation: 0),
       body: Column(
         children: [
@@ -47,10 +80,28 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Ürün adı, marka, barkod veya kategori...',
+                hintText: 'Ürün adı, marka, barkod... (USB & Kamera destekli)',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // USB Barkod göstergesi
+                    Icon(
+                      Icons.usb,
+                      size: 18,
+                      color: AppTheme.primaryColor.withOpacity(0.7),
+                    ),
+                    const SizedBox(width: 4),
+                    // Kamera barkod tarama butonu
+                    IconButton(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      onPressed: _scanBarcodeWithCamera,
+                      tooltip: 'Kamera ile Barkod Tara',
+                      iconSize: 20,
+                    ),
+                    // Temizle butonu
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
@@ -59,8 +110,10 @@ class _SearchScreenState extends State<SearchScreen> {
                             _hasSearched = false;
                           });
                         },
-                      )
-                    : null,
+                        iconSize: 20,
+                      ),
+                  ],
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -319,7 +372,43 @@ class _SearchScreenState extends State<SearchScreen> {
       context,
       listen: false,
     );
-    final searchResults = productProvider.searchProducts(query.trim());
+    
+    // Barkod formatı kontrolü (sayısal ve belirli uzunlukta)
+    final trimmedQuery = query.trim();
+    final isBarcodeFormat = RegExp(r'^\d{8,}$').hasMatch(trimmedQuery);
+    
+    List<ProductModel> searchResults;
+    
+    if (isBarcodeFormat) {
+      // Barkod aramasında önce tam eşleşme ara
+      searchResults = productProvider.products
+          .where((product) => product.barcode == trimmedQuery)
+          .toList();
+      
+      // Tam eşleşme yoksa normal arama yap
+      if (searchResults.isEmpty) {
+        searchResults = productProvider.searchProducts(trimmedQuery);
+      }
+      
+      // Barkod bulunduğu bilgisini göster
+      if (searchResults.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              searchResults.length == 1 
+                  ? 'Barkod ile ürün bulundu!'
+                  : '${searchResults.length} ürün barkod ile eşleşti'
+            ),
+            backgroundColor: AppTheme.successColor,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      // Normal arama
+      searchResults = productProvider.searchProducts(trimmedQuery);
+    }
 
     setState(() {
       _searchResults = searchResults;
@@ -499,7 +588,8 @@ class _SearchScreenState extends State<SearchScreen> {
           imageUrls: product.imageUrls,
           productName: product.name,
         ),
-      ),
-    );
+        ), // AlertDialog kapanışı
+      ), // Scaffold kapanışı
+    ); // UsbBarcodeListener kapanışı
   }
 }
