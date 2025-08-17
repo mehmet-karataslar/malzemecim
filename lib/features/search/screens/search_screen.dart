@@ -24,10 +24,11 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
   @override
   void initState() {
     super.initState();
-    
+
     // Navigation arguments'tan gelen barkod varsa otomatik arama yap
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args['barcode'] != null) {
         final barcode = args['barcode'].toString();
         if (barcode.isNotEmpty) {
@@ -56,19 +57,14 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
     return UsbBarcodeListener(
       onBarcodeScanned: handleUsbBarcode,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Ürün Ara'),
-          elevation: 0,
-        ),
+        appBar: AppBar(title: const Text('Ürün Ara'), elevation: 0),
         body: Column(
           children: [
             // Arama alanı
             _buildSearchSection(),
 
             // Sonuçlar
-            Expanded(
-              child: _buildSearchResults(),
-            ),
+            Expanded(child: _buildSearchResults()),
           ],
         ),
       ),
@@ -196,11 +192,7 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search,
-            size: 80,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.search, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'Ürün Arama',
@@ -213,10 +205,7 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
           Text(
             'Aramak istediğiniz ürünün adını, markasını\nveya barkodunu yazın',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey[500], fontSize: 16),
           ),
           const SizedBox(height: 24),
           Container(
@@ -261,11 +250,7 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'Sonuç Bulunamadı',
@@ -278,10 +263,7 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
           Text(
             '"$_lastSearchQuery" için sonuç bulunamadı',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey[500], fontSize: 16),
           ),
           const SizedBox(height: 16),
           Container(
@@ -328,11 +310,9 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
       margin: const EdgeInsets.only(bottom: 12.0),
       child: ListTile(
         leading: ProductImageWidget(
-          imageUrls: product.imageUrls,
-          width: 60,
-          height: 60,
-          borderRadius: 8,
-          onTap: () => _showProductImages(product),
+          product: product,
+          size: 60,
+          borderRadius: BorderRadius.circular(8),
         ),
         title: Text(
           product.name,
@@ -341,22 +321,29 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (product.brand.isNotEmpty)
-              Text('Marka: ${product.brand}'),
+            if (product.brand.isNotEmpty) Text('Marka: ${product.brand}'),
             Text('Kategori: ${product.category}'),
             Text('Fiyat: ${product.price.toStringAsFixed(2)} ₺'),
             Row(
               children: [
-                Text('Stok: ${product.stock.toStringAsFixed(0)} ${product.unit}'),
+                Text(
+                  'Stok: ${product.stock.toStringAsFixed(0)} ${product.unit}',
+                ),
                 if (isLowStock) ...[
                   const SizedBox(width: 8),
                   const Icon(Icons.warning, color: Colors.orange, size: 16),
-                  const Text(' Düşük Stok', style: TextStyle(color: Colors.orange)),
+                  const Text(
+                    ' Düşük Stok',
+                    style: TextStyle(color: Colors.orange),
+                  ),
                 ],
               ],
             ),
             if (product.barcode.isNotEmpty)
-              Text('Barkod: ${product.barcode}', style: const TextStyle(fontSize: 12)),
+              Text(
+                'Barkod: ${product.barcode}',
+                style: const TextStyle(fontSize: 12),
+              ),
           ],
         ),
         trailing: PopupMenuButton<String>(
@@ -420,7 +407,7 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
             content: Text(
               searchResults.length == 1
                   ? 'Barkod ile ürün bulundu!'
-                  : '${searchResults.length} ürün barkod ile eşleşti'
+                  : '${searchResults.length} ürün barkod ile eşleşti',
             ),
             backgroundColor: AppTheme.successColor,
             duration: const Duration(seconds: 2),
@@ -460,9 +447,7 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
   void _scanBarcodeWithCamera() async {
     final result = await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const BarcodeScannorPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const BarcodeScannorPage()),
     );
 
     if (result != null && result.isNotEmpty) {
@@ -474,20 +459,6 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
 
       showBarcodeSuccess(result);
     }
-  }
-
-  void _showProductImages(ProductModel product) {
-    if (product.imageUrls.isEmpty) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ProductImageFullScreen(
-          imageUrls: product.imageUrls,
-          initialIndex: 0,
-          productName: product.name,
-        ),
-      ),
-    );
   }
 
   void _showProductDetails(ProductModel product) {
@@ -506,10 +477,9 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
                   height: 200,
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 16),
-                  child: ProductImageWidget(
+                  child: ProductImageCarousel(
                     imageUrls: product.imageUrls,
-                    borderRadius: 8,
-                    onTap: () => _showProductImages(product),
+                    productName: product.name,
                   ),
                 ),
 
@@ -518,8 +488,14 @@ class _SearchScreenState extends State<SearchScreen> with UsbBarcodeHandler {
               if (product.brand.isNotEmpty)
                 _buildDetailRow('Marka', product.brand),
               _buildDetailRow('Fiyat', '${product.price.toStringAsFixed(2)} ₺'),
-              _buildDetailRow('Stok', '${product.stock.toStringAsFixed(0)} ${product.unit}'),
-              _buildDetailRow('Min. Stok', '${product.minStock.toStringAsFixed(0)} ${product.unit}'),
+              _buildDetailRow(
+                'Stok',
+                '${product.stock.toStringAsFixed(0)} ${product.unit}',
+              ),
+              _buildDetailRow(
+                'Min. Stok',
+                '${product.minStock.toStringAsFixed(0)} ${product.unit}',
+              ),
               if (product.barcode.isNotEmpty)
                 _buildDetailRow('Barkod', product.barcode),
               if (product.description.isNotEmpty)
