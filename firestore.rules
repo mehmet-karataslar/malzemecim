@@ -2,11 +2,13 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Kullanıcılar - sadece admin kendi bilgilerini görebilir
+    // Kullanıcılar - kendi bilgilerini yönetebilir + admin oluşturma izni
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if request.auth != null;  // Kullanıcı oluşturma izni
+      allow read: if request.auth != null && resource.data.email == request.auth.token.email;  // Email ile okuma
     }
     
     // Ürünler - admin tam yetki, çalışan sadece okuma

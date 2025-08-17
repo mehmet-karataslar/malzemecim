@@ -2,25 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../core/constants/app_constants.dart';
-import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _businessNameController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    _businessNameController.dispose();
     super.dispose();
   }
 
@@ -28,6 +34,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Kayıt Ol'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
@@ -38,12 +49,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 60),
-
-                    // Logo ve Başlık
+                    // Header
                     _buildHeader(),
 
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 40),
+
+                    // Business Name Field
+                    _buildBusinessNameField(),
+
+                    const SizedBox(height: 16),
+
+                    // Name Field
+                    _buildNameField(),
+
+                    const SizedBox(height: 16),
 
                     // Email Field
                     _buildEmailField(),
@@ -53,10 +72,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Password Field
                     _buildPasswordField(),
 
+                    const SizedBox(height: 16),
+
+                    // Confirm Password Field
+                    _buildConfirmPasswordField(),
+
                     const SizedBox(height: 24),
 
-                    // Login Button
-                    _buildLoginButton(authProvider),
+                    // Register Button
+                    _buildRegisterButton(authProvider),
 
                     const SizedBox(height: 16),
 
@@ -66,10 +90,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Register Link
-                    _buildRegisterLink(),
-
-                    const SizedBox(height: 40),
+                    // Login Link
+                    _buildLoginLink(),
                   ],
                 ),
               ),
@@ -85,20 +107,20 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         // App Icon/Logo
         Container(
-          width: 120,
-          height: 120,
+          width: 100,
+          height: 100,
           decoration: BoxDecoration(
             color: const Color(0xFF1e3a8a),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: const Icon(Icons.store, size: 60, color: Colors.white),
+          child: const Icon(Icons.store, size: 50, color: Colors.white),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
         Text(
-          AppConstants.appName,
-          style: Theme.of(context).textTheme.displayLarge?.copyWith(
+          'Malzemecim\'e Hoş Geldiniz',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: const Color(0xFF1e3a8a),
             fontWeight: FontWeight.bold,
           ),
@@ -107,12 +129,47 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
 
         Text(
-          'Envanter & Veresiye Yönetimi',
+          'İşletmenizi kaydedin ve yönetmeye başlayın',
           style: Theme.of(
             context,
-          ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+          ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Widget _buildBusinessNameField() {
+    return TextFormField(
+      controller: _businessNameController,
+      decoration: const InputDecoration(
+        labelText: 'İşletme Adı',
+        hintText: 'Örnek: Mehmet Nalbur',
+        prefixIcon: Icon(Icons.business),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'İşletme adı gereklidir';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildNameField() {
+    return TextFormField(
+      controller: _nameController,
+      decoration: const InputDecoration(
+        labelText: 'Adınız Soyadınız',
+        hintText: 'Örnek: Mehmet Karataşlar',
+        prefixIcon: Icon(Icons.person),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Ad soyad gereklidir';
+        }
+        return null;
+      },
     );
   }
 
@@ -143,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: _obscurePassword,
       decoration: InputDecoration(
         labelText: 'Şifre',
-        hintText: 'Şifrenizi giriniz',
+        hintText: 'En az 6 karakter',
         prefixIcon: const Icon(Icons.lock),
         suffixIcon: IconButton(
           icon: Icon(
@@ -168,11 +225,42 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginButton(AuthProvider authProvider) {
+  Widget _buildConfirmPasswordField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: _obscureConfirmPassword,
+      decoration: InputDecoration(
+        labelText: 'Şifre Tekrar',
+        hintText: 'Şifrenizi tekrar giriniz',
+        prefixIcon: const Icon(Icons.lock_outline),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscureConfirmPassword = !_obscureConfirmPassword;
+            });
+          },
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Şifre tekrarı gereklidir';
+        }
+        if (value != _passwordController.text) {
+          return 'Şifreler eşleşmiyor';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildRegisterButton(AuthProvider authProvider) {
     return SizedBox(
       height: 50,
       child: ElevatedButton(
-        onPressed: authProvider.isLoading ? null : _handleLogin,
+        onPressed: authProvider.isLoading ? null : _handleRegister,
         child: authProvider.isLoading
             ? const SizedBox(
                 width: 24,
@@ -183,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               )
             : const Text(
-                'Giriş Yap',
+                'Kayıt Ol',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
       ),
@@ -210,19 +298,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildRegisterLink() {
+  Widget _buildLoginLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Hesabınız yok mu? ', style: TextStyle(color: Colors.grey[600])),
+        Text(
+          'Zaten hesabınız var mı? ',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
         TextButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-            );
+            Navigator.of(context).pop();
           },
           child: const Text(
-            'Kayıt Ol',
+            'Giriş Yap',
             style: TextStyle(
               color: Color(0xFF1e3a8a),
               fontWeight: FontWeight.w600,
@@ -233,17 +322,28 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      final success = await authProvider.signInWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text,
+      final success = await authProvider.registerUser(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+        businessName: _businessNameController.text.trim(),
       );
 
       if (success) {
-        // Navigation ana uygulama tarafından otomatik olarak hallediliyor
+        // Kayıt başarılı, ana sayfaya yönlendir
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const Scaffold(
+                body: Center(child: Text('Kayıt başarılı! Hoş geldiniz.')),
+              ),
+            ),
+          );
+        }
       }
     }
   }

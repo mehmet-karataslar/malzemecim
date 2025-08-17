@@ -5,6 +5,7 @@ import 'core/constants/app_constants.dart';
 import 'core/services/firebase_service.dart';
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/app_provider.dart';
+import 'features/products/providers/product_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shared/widgets/main_navigation.dart';
 
@@ -13,8 +14,6 @@ void main() async {
 
   try {
     await FirebaseService.initialize();
-    // Test kullanıcısı oluştur (geliştirme için)
-    await FirebaseService.createTestUser();
   } catch (e) {
     print('Firebase initialization failed: $e');
   }
@@ -31,6 +30,7 @@ class MalzemecimApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
