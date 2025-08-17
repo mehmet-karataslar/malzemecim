@@ -1,4 +1,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Camera permissions for barcode scanning -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- Internet permissions for Firebase and other network operations -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Storage permissions for file operations -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <!-- Wake lock for scanning operations -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Flash permission for camera flash -->
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
+    
+    <!-- Camera features -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+
     <application
         android:label="malzemecim"
         android:name="${applicationName}"

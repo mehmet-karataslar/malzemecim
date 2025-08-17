@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -14,11 +15,22 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   String? lastScannedCode;
   bool isScanning = true;
+  bool isFlashOn = false;
   final TextEditingController _manualInputController = TextEditingController();
+  MobileScannerController? scannerController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      scannerController = MobileScannerController();
+    }
+  }
 
   @override
   void dispose() {
     _manualInputController.dispose();
+    scannerController?.dispose();
     super.dispose();
   }
 
@@ -32,7 +44,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
             icon: Icon(isScanning ? Icons.pause : Icons.play_arrow),
             onPressed: _toggleScanning,
           ),
-          IconButton(icon: const Icon(Icons.flash_on), onPressed: _toggleFlash),
+          IconButton(
+            icon: Icon(isFlashOn ? Icons.flash_on : Icons.flash_off),
+            onPressed: _toggleFlash,
+          ),
         ],
       ),
       body: Consumer<AuthProvider>(
@@ -121,32 +136,31 @@ class _ScannerScreenState extends State<ScannerScreen> {
       // Mobil için kamera tarayıcı
       return Container(
         margin: const EdgeInsets.all(16),
+        height: 300,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.primaryColor, width: 2),
-          color: Colors.grey[200],
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.camera_alt, size: 60, color: Colors.grey[600]),
-              const SizedBox(height: 16),
-              Text(
-                'Kamera Tarayıcı',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Mobil cihazlarda mevcut',
-                style: TextStyle(color: Colors.grey[500]),
-              ),
-            ],
-          ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: scannerController != null
+              ? MobileScanner(
+                  controller: scannerController!,
+                  onDetect: (BarcodeCapture capture) {
+                    final List<Barcode> barcodes = capture.barcodes;
+                    if (barcodes.isNotEmpty && isScanning) {
+                      final String? code = barcodes.first.rawValue;
+                      if (code != null && code.isNotEmpty) {
+                        setState(() {
+                          lastScannedCode = code;
+                          isScanning = false;
+                        });
+                        _searchProduct(code);
+                      }
+                    }
+                  },
+                )
+              : const Center(child: CircularProgressIndicator()),
         ),
       );
     }
@@ -320,7 +334,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   void _toggleFlash() {
     // Web'de flash özelliği yok
-    if (kIsWeb) return;
+    if (kIsWeb || scannerController == null) return;
+
+    setState(() {
+      isFlashOn = !isFlashOn;
+    });
+
+    scannerController!.toggleTorch();
   }
 
   void _searchProduct(String code) {
