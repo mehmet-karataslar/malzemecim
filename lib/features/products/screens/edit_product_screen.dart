@@ -6,6 +6,7 @@ import 'dart:io';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/image_picker_widget.dart';
+import '../../../shared/widgets/barcode_scanner_page.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/product_provider.dart';
 
@@ -465,14 +466,32 @@ class _EditProductScreenState extends State<EditProductScreen> {
             ),
             const SizedBox(height: 16),
 
-            TextFormField(
-              controller: _barcodeController,
-              decoration: const InputDecoration(
-                labelText: 'Barkod',
-                hintText: 'Barkod numarası',
-                prefixIcon: Icon(Icons.qr_code),
-              ),
-              keyboardType: TextInputType.number,
+            Row(
+              children: [
+                // Barkod Input
+                Expanded(
+                  child: TextFormField(
+                    controller: _barcodeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Barkod',
+                      hintText: 'Barkod numarası',
+                      prefixIcon: Icon(Icons.qr_code),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Tarama Butonu
+                IconButton(
+                  onPressed: _scanBarcode,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  tooltip: 'Barkod Tara',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -508,6 +527,28 @@ class _EditProductScreenState extends State<EditProductScreen> {
     }
 
     return allImageUrls;
+  }
+
+  void _scanBarcode() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannorPage()),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _barcodeController.text = result;
+      });
+
+      // Başarılı tarama bildirimi
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Barkod başarıyla tarandı: $result'),
+          backgroundColor: AppTheme.successColor,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _updateProduct() async {

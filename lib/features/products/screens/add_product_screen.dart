@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/image_picker_widget.dart';
+import '../../../shared/widgets/barcode_scanner_page.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/product_provider.dart';
 
@@ -86,6 +87,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'Temizlik',
     'Diğer',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Barkod parametresi geldi mi kontrol et
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args['barcode'] != null) {
+        final barcode = args['barcode'].toString();
+        if (barcode.isNotEmpty) {
+          setState(() {
+            _barcodeController.text = barcode;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Barkod otomatik dolduruldu: $barcode'),
+              backgroundColor: AppTheme.successColor,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -502,14 +530,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return allImageUrls;
   }
 
-  void _scanBarcode() {
-    // TODO: Barkod tarama fonksiyonunu bağla
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Barkod tarama özelliği yakında eklenecek'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
+  void _scanBarcode() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannorPage()),
     );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _barcodeController.text = result;
+      });
+
+      // Başarılı tarama bildirimi
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Barkod başarıyla tarandı: $result'),
+          backgroundColor: AppTheme.successColor,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _saveProduct() async {

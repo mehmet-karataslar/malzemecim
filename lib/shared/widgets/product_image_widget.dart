@@ -21,6 +21,8 @@ class ProductImageWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final radius = borderRadius ?? BorderRadius.circular(8);
 
+    // Fotoğraf durumu kontrol edildi
+
     if (product.imageUrls.isNotEmpty) {
       return Container(
         width: size,
