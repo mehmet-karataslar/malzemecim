@@ -19,3 +19,7 @@
 # Barcode scanning
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.vision.** { *; }
+
+# Play Core Library - Fix for missing classes
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
