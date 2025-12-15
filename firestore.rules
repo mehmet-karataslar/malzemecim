@@ -14,15 +14,19 @@ service cloud.firestore {
     }
     
     // Kullanıcılar - kendi bilgilerini yönetebilir + admin oluşturma izni
+    // İşletme listesi için public read (randevu için)
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
-      allow read: if isAdmin();
-      allow create: if isSignedIn();
+      // Herkes işletme bilgilerini okuyabilir (randevu için)
+      allow read: if true;
+      // Kendi bilgilerini güncelleyebilir
+      allow write: if isSignedIn() && request.auth.uid == userId;
+      // Yeni kullanıcı oluşturabilir (kayıt için)
+      allow create: if true;
     }
     
-    // Ürünler - admin tam yetki, çalışan sadece okuma
+    // Ürünler - herkese açık okuma (arama için), admin yazabilir
     match /products/{productId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Public read for search
       allow write: if isAdmin();
     }
     
@@ -58,6 +62,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
+    }
+    
+    // Randevular - herkes oluşturabilir, işletmeler sadece kendi randevularını görebilir
+    match /appointments/{appointmentId} {
+      // Herkes randevu oluşturabilir (public)
+      allow create: if true;
+      
+      // Randevu sahibi işletme okuyabilir ve güncelleyebilir
+      allow read, update: if isSignedIn() && 
+        resource.data.businessId == request.auth.uid;
+      
+      // Randevu sahibi işletme silebilir
+      allow delete: if isSignedIn() && 
+        resource.data.businessId == request.auth.uid;
     }
     
     // Varsayılan: Erişimi reddet

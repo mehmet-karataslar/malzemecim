@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadData();
   }
 
@@ -125,29 +125,46 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             },
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.calendar_today),
-              text: 'Randevu Al',
-            ),
-            Tab(
-              icon: Icon(Icons.search),
-              text: 'Ürün Ara',
-            ),
-          ],
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-        ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           _buildHomeTab(),
           const PublicProductSearchScreen(),
+          const BookAppointmentScreen(),
         ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.home),
+              text: 'Anasayfa',
+            ),
+            Tab(
+              icon: Icon(Icons.search),
+              text: 'Ürün Ara',
+            ),
+            Tab(
+              icon: Icon(Icons.calendar_today),
+              text: 'Randevu Al',
+            ),
+          ],
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+        ),
       ),
     );
   }
