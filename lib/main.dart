@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/firebase_service.dart';
@@ -16,6 +17,9 @@ import 'shared/widgets/main_navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Türkçe locale verilerini başlat
+  await initializeDateFormatting('tr_TR', null);
 
   try {
     await FirebaseService.initialize();
