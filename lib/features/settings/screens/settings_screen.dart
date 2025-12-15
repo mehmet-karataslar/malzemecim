@@ -489,6 +489,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
     bool isLoading = false;
+    bool showCurrentPassword = false;
+    bool showNewPassword = false;
+    bool showConfirmPassword = false;
 
     showDialog(
       context: context,
@@ -507,31 +510,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 TextField(
                   controller: currentPasswordController,
-                  obscureText: true,
+                  obscureText: !showCurrentPassword,
                   enabled: !isLoading,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Mevcut Şifre',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        showCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          showCurrentPassword = !showCurrentPassword;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: newPasswordController,
-                  obscureText: true,
+                  obscureText: !showNewPassword,
                   enabled: !isLoading,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Yeni Şifre',
-                    prefixIcon: Icon(Icons.lock),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        showNewPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          showNewPassword = !showNewPassword;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: confirmPasswordController,
-                  obscureText: true,
+                  obscureText: !showConfirmPassword,
                   enabled: !isLoading,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Yeni Şifre (Tekrar)',
-                    prefixIcon: Icon(Icons.lock),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        showConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          showConfirmPassword = !showConfirmPassword;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 if (isLoading) ...[
@@ -617,6 +650,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final passwordController = TextEditingController();
     bool isLoading = false;
     bool showEmailChange = false;
+    bool showPassword = false;
 
     showModalBottomSheet(
       context: context,
@@ -818,11 +852,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               TextField(
                                 controller: passwordController,
                                 enabled: !isLoading,
-                                obscureText: true,
-                                decoration: const InputDecoration(
+                                obscureText: !showPassword,
+                                decoration: InputDecoration(
                                   labelText: 'Mevcut Şifre',
-                                  prefixIcon: Icon(Icons.lock_outline),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      showPassword ? Icons.visibility : Icons.visibility_off,
+                                    ),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        showPassword = !showPassword;
+                                      });
+                                    },
+                                  ),
+                                  border: const OutlineInputBorder(),
                                   filled: true,
                                   fillColor: Colors.white,
                                   helperText: 'E-posta değiştirmek için şifrenizi girin',
