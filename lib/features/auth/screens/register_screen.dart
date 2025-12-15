@@ -37,6 +37,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text('Kayıt Ol'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SafeArea(
         child: Consumer<AuthProvider>(
