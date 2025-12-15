@@ -448,7 +448,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.72,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -459,7 +459,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   },
                 )
               : SizedBox(
-                  height: 280,
+                  height: 260,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -476,16 +476,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildProductCard(ProductModel product, bool isWeb) {
-    final cardWidth = isWeb ? null : 180.0;
+    final cardWidth = isWeb ? null : 160.0;
     
     return Container(
       width: cardWidth,
-      margin: EdgeInsets.only(right: isWeb ? 0 : 12),
+      margin: EdgeInsets.only(right: isWeb ? 0 : 8),
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
+        margin: EdgeInsets.zero,
         child: InkWell(
           onTap: () {
             Navigator.push(
@@ -498,10 +499,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           borderRadius: BorderRadius.circular(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Görsel Bölümü - Sabit yükseklik
               Container(
-                height: isWeb ? 140 : 180,
+                height: isWeb ? 160 : 140,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -539,7 +541,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 color: Colors.grey[200],
                                 child: const Icon(
                                   Icons.image,
-                                  size: 48,
+                                  size: 40,
                                   color: Colors.grey,
                                 ),
                               ),
@@ -549,28 +551,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             color: Colors.grey[200],
                             child: const Icon(
                               Icons.image,
-                              size: 48,
+                              size: 40,
                               color: Colors.grey,
                             ),
                           ),
                     if (product.stock <= product.minStock)
                       Positioned(
-                        top: 8,
-                        right: 8,
+                        top: 6,
+                        right: 6,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 6,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
                             'Az Stok',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -581,7 +583,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
               // Bilgi Bölümü
               Padding(
-                padding: EdgeInsets.all(isWeb ? 8 : 12),
+                padding: EdgeInsets.all(isWeb ? 10 : 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -590,12 +592,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 12 : 13,
+                        fontSize: isWeb ? 13 : 12,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: isWeb ? 4 : 6),
+                    SizedBox(height: isWeb ? 4 : 3),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -606,14 +608,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: isWeb ? 14 : 16,
+                              fontSize: isWeb ? 15 : 14,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: isWeb ? 4 : 6,
+                            horizontal: isWeb ? 4 : 5,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
@@ -624,7 +626,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             '${product.stock.toStringAsFixed(0)} ${product.unit}',
                             style: TextStyle(
                               color: AppTheme.primaryColor,
-                              fontSize: isWeb ? 9 : 10,
+                              fontSize: isWeb ? 9 : 9,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

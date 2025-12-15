@@ -109,166 +109,123 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                 : productProvider.getProductsByCategory(_selectedCategory);
           }
 
-          return CustomScrollView(
-            slivers: [
-              // Search Bar
-              SliverAppBar(
-                floating: true,
-                pinned: true,
-                backgroundColor: AppTheme.primaryColor,
-                expandedHeight: 100,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: const Text('Ürün Ara'),
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppTheme.primaryColor,
-                          AppTheme.primaryColor.withOpacity(0.7),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(60),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Ürün adı, marka veya barkod ara...',
-                        prefixIcon: const Icon(Icons.search),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
+          final screenWidth = MediaQuery.of(context).size.width;
+          final isWeb = screenWidth > 600;
+          
+          return Column(
+            children: [
+              // Fixed Header - Search Bar
+              Container(
+                color: AppTheme.primaryColor,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Ürün adı, marka veya barkod ara...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
               ),
-
-              // Category Filter
-              SliverToBoxAdapter(
-                child: Builder(
-                  builder: (context) {
-                    final screenWidth = MediaQuery.of(context).size.width;
-                    final isWeb = screenWidth > 600;
-                    
-                    return isWeb
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _categories.map((category) {
-                                final isSelected = category['name'] == _selectedCategory;
-                                return FilterChip(
-                                  selected: isSelected,
-                                  label: Text(category['name'] as String),
-                                  avatar: Icon(
-                                    category['icon'] as IconData,
-                                    size: 16,
-                                    color: isSelected ? Colors.white : category['color'] as Color,
-                                  ),
-                                  selectedColor: category['color'] as Color,
-                                  checkmarkColor: Colors.white,
-                                  onSelected: (selected) {
-                                    setState(() {
-                                      _selectedCategory = category['name'] as String;
-                                      _filterProducts();
-                                    });
-                                  },
-                                );
-                              }).toList(),
+              
+              // Fixed Category Filter
+              Container(
+                color: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: isWeb ? 16 : 8),
+                child: isWeb
+                    ? Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _categories.map((category) {
+                          final isSelected = category['name'] == _selectedCategory;
+                          return FilterChip(
+                            selected: isSelected,
+                            label: Text(category['name'] as String),
+                            avatar: Icon(
+                              category['icon'] as IconData,
+                              size: 16,
+                              color: isSelected ? Colors.white : category['color'] as Color,
                             ),
-                          )
-                        : SizedBox(
-                            height: 60,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              itemCount: _categories.length,
-                              itemBuilder: (context, index) {
-                                final category = _categories[index];
-                                final isSelected = category['name'] == _selectedCategory;
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: FilterChip(
-                                    selected: isSelected,
-                                    label: Text(category['name'] as String),
-                                    avatar: Icon(
-                                      category['icon'] as IconData,
-                                      size: 18,
-                                      color: isSelected ? Colors.white : category['color'] as Color,
-                                    ),
-                                    selectedColor: category['color'] as Color,
-                                    checkmarkColor: Colors.white,
-                                    onSelected: (selected) {
-                                      setState(() {
-                                        _selectedCategory = category['name'] as String;
-                                        _filterProducts();
-                                      });
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
+                            selectedColor: category['color'] as Color,
+                            checkmarkColor: Colors.white,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedCategory = category['name'] as String;
+                                _filterProducts();
+                              });
+                            },
                           );
-                  },
-                ),
-              ),
-
-              // Products Grid
-              if (_filteredProducts.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Ürün bulunamadı',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.all(8),
-                  sliver: Builder(
-                    builder: (context) {
-                      final screenWidth = MediaQuery.of(context).size.width;
-                      final isWeb = screenWidth > 600;
-                      final crossAxisCount = isWeb ? 4 : 2;
-                      final spacing = isWeb ? 16.0 : 8.0;
-                      
-                      return SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: isWeb ? 0.85 : 0.75,
-                          crossAxisSpacing: spacing,
-                          mainAxisSpacing: spacing,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final product = _filteredProducts[index];
-                            return _buildProductCard(product);
+                        }).toList(),
+                      )
+                    : SizedBox(
+                        height: 50,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _categories.length,
+                          itemBuilder: (context, index) {
+                            final category = _categories[index];
+                            final isSelected = category['name'] == _selectedCategory;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                selected: isSelected,
+                                label: Text(category['name'] as String),
+                                avatar: Icon(
+                                  category['icon'] as IconData,
+                                  size: 18,
+                                  color: isSelected ? Colors.white : category['color'] as Color,
+                                ),
+                                selectedColor: category['color'] as Color,
+                                checkmarkColor: Colors.white,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedCategory = category['name'] as String;
+                                    _filterProducts();
+                                  });
+                                },
+                              ),
+                            );
                           },
-                          childCount: _filteredProducts.length,
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
+              ),
+              
+              // Scrollable Products Grid
+              Expanded(
+                child: _filteredProducts.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Ürün bulunamadı',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: EdgeInsets.all(isWeb ? 16 : 8),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isWeb ? 4 : 2,
+                          childAspectRatio: isWeb ? 0.72 : 0.68,
+                          crossAxisSpacing: isWeb ? 12 : 8,
+                          mainAxisSpacing: isWeb ? 12 : 8,
+                        ),
+                        itemCount: _filteredProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = _filteredProducts[index];
+                          return _buildProductCard(product);
+                        },
+                      ),
+              ),
             ],
           );
         },
@@ -277,9 +234,13 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
   }
 
   Widget _buildProductCard(ProductModel product) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWeb = screenWidth > 600;
+    
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -292,9 +253,15 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Product Image
-            Expanded(
+            // Product Image - Fixed height
+            Container(
+              height: isWeb ? 160 : 140,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: product.imageUrls.isNotEmpty
@@ -319,44 +286,47 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                         },
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: Colors.grey[200],
-                          child: const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                          child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
                         ),
                       )
                     : Container(
                         color: Colors.grey[200],
-                        child: const Icon(Icons.image, size: 48, color: Colors.grey),
+                        child: const Icon(Icons.image, size: 40, color: Colors.grey),
                       ),
               ),
             ),
 
             // Product Info
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(isWeb ? 10 : 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     product.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: isWeb ? 13 : 12,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: isWeb ? 4 : 2),
                   Text(
                     product.brand,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: isWeb ? 11 : 10,
                       color: Colors.grey[600],
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: isWeb ? 6 : 4),
                   Text(
                     '${product.price.toStringAsFixed(2)} ₺',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: isWeb ? 15 : 14,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryColor,
                     ),
