@@ -451,7 +451,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    childAspectRatio: 0.72,
+                    childAspectRatio: 0.85,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -462,7 +462,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   },
                 )
               : SizedBox(
-                  height: 260,
+                  height: 220,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -479,7 +479,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildProductCard(ProductModel product, bool isWeb) {
-    final cardWidth = isWeb ? null : 160.0;
+    final cardWidth = isWeb ? null : 140.0;
     
     return Container(
       width: cardWidth,
@@ -506,7 +506,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             children: [
               // Görsel Bölümü - Sabit yükseklik
               Container(
-                height: isWeb ? 160 : 140,
+                height: isWeb ? 120 : 100,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -586,7 +586,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
               // Bilgi Bölümü
               Padding(
-                padding: EdgeInsets.all(isWeb ? 10 : 8),
+                padding: EdgeInsets.all(isWeb ? 8 : 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -595,12 +595,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 13 : 12,
+                        fontSize: isWeb ? 12 : 11,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: isWeb ? 4 : 3),
+                    SizedBox(height: isWeb ? 3 : 2),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -611,25 +611,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: isWeb ? 15 : 14,
+                              fontSize: isWeb ? 14 : 13,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: isWeb ? 4 : 5,
-                            vertical: 2,
+                            horizontal: isWeb ? 4 : 4,
+                            vertical: 1,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '${product.stock.toStringAsFixed(0)} ${product.unit}',
                             style: TextStyle(
                               color: AppTheme.primaryColor,
-                              fontSize: isWeb ? 9 : 9,
+                              fontSize: isWeb ? 8 : 8,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
