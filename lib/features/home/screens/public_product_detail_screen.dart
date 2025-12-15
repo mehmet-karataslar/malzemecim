@@ -262,29 +262,55 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
               setState(() => _currentImageIndex = index);
             },
             itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: imageUrls[index],
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                httpHeaders: kIsWeb ? {
-                  'Access-Control-Allow-Origin': '*',
-                } : null,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                errorWidget: (context, url, error) {
-                  debugPrint('Image error in detail screen: $error');
-                  return Container(
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported,
-                        size: 64, color: Colors.grey),
-                  );
-                },
-              );
+              return kIsWeb
+                  ? Image.network(
+                      imageUrls[index],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('Image error in detail screen: $error');
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image_not_supported,
+                              size: 64, color: Colors.grey),
+                        );
+                      },
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: imageUrls[index],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) {
+                        debugPrint('Image error in detail screen: $error');
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image_not_supported,
+                              size: 64, color: Colors.grey),
+                        );
+                      },
+                    );
             },
           ),
           if (imageUrls.length > 1)

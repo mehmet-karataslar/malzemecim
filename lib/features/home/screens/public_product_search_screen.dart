@@ -266,28 +266,53 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: product.imageUrls.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: product.imageUrls.first,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        httpHeaders: kIsWeb ? {
-                          'Access-Control-Allow-Origin': '*',
-                        } : null,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) {
-                          debugPrint('Image error: $error');
-                          return Container(
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                          );
-                        },
-                      )
+                    ? (kIsWeb
+                        ? Image.network(
+                            product.imageUrls.first,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              debugPrint('Image error: $error');
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              );
+                            },
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: product.imageUrls.first,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) {
+                              debugPrint('Image error: $error');
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              );
+                            },
+                          ))
                     : Container(
                         color: Colors.grey[200],
                         child: const Icon(Icons.image, size: 40, color: Colors.grey),

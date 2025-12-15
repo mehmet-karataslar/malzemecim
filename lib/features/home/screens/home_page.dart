@@ -308,8 +308,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget _buildCategoriesSection() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isWeb = screenWidth > 600;
-    final crossAxisCount = isWeb ? 8 : 4;
-    final childAspectRatio = isWeb ? 1.0 : 0.85;
+    final crossAxisCount = isWeb ? 10 : 4;
+    final childAspectRatio = isWeb ? 1.1 : 0.85;
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -378,7 +378,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(isWeb ? 8 : 12),
+              padding: EdgeInsets.all(isWeb ? 10 : 12),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 shape: BoxShape.circle,
@@ -386,17 +386,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               child: Icon(
                 category['icon'] as IconData,
                 color: Colors.white,
-                size: isWeb ? 20 : 28,
+                size: isWeb ? 32 : 28,
               ),
             ),
-            SizedBox(height: isWeb ? 4 : 8),
+            SizedBox(height: isWeb ? 6 : 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 category['name'] as String,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: isWeb ? 9 : 11,
+                  fontSize: isWeb ? 13 : 11,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -452,7 +452,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    childAspectRatio: 0.75,
+                    childAspectRatio: 0.88,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -522,32 +522,61 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(16),
                             ),
-                            child: CachedNetworkImage(
-                              imageUrl: product.imageUrls.first,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              httpHeaders: kIsWeb ? {
-                                'Access-Control-Allow-Origin': '*',
-                              } : null,
-                              placeholder: (context, url) => Container(
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) {
-                                debugPrint('Image error: $error');
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.image,
-                                    size: 40,
-                                    color: Colors.grey,
+                            child: kIsWeb
+                                ? Image.network(
+                                    product.imageUrls.first,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded /
+                                                    loadingProgress.expectedTotalBytes!
+                                                : null,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      debugPrint('Image error: $error');
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(
+                                          Icons.image,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : CachedNetworkImage(
+                                    imageUrl: product.imageUrls.first,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) {
+                                      debugPrint('Image error: $error');
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(
+                                          Icons.image,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
                           )
                         : Container(
                             color: Colors.grey[200],
