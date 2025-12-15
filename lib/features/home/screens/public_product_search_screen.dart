@@ -215,7 +215,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                         padding: EdgeInsets.all(isWeb ? 16 : 8),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: isWeb ? 4 : 2,
-                          childAspectRatio: isWeb ? 0.85 : 0.80,
+                          childAspectRatio: isWeb ? 0.75 : 0.70,
                           crossAxisSpacing: isWeb ? 12 : 8,
                           mainAxisSpacing: isWeb ? 12 : 8,
                         ),
@@ -257,7 +257,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
           children: [
             // Product Image - Fixed height
             Container(
-              height: isWeb ? 120 : 100,
+              height: isWeb ? 160 : 140,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -298,7 +298,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
 
             // Product Info
             Padding(
-              padding: EdgeInsets.all(isWeb ? 8 : 6),
+              padding: EdgeInsets.fromLTRB(isWeb ? 10 : 8, isWeb ? 8 : 6, isWeb ? 10 : 8, isWeb ? 8 : 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -307,16 +307,16 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                     product.name,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: isWeb ? 12 : 11,
+                      fontSize: isWeb ? 13 : 12,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: isWeb ? 3 : 2),
+                  SizedBox(height: isWeb ? 4 : 3),
                   Text(
                     product.brand,
                     style: TextStyle(
-                      fontSize: isWeb ? 10 : 9,
+                      fontSize: isWeb ? 11 : 10,
                       color: Colors.grey[600],
                     ),
                     maxLines: 1,
@@ -326,7 +326,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                   Text(
                     '${product.price.toStringAsFixed(2)} ₺',
                     style: TextStyle(
-                      fontSize: isWeb ? 14 : 13,
+                      fontSize: isWeb ? 15 : 14,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryColor,
                     ),

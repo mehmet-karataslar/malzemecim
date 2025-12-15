@@ -451,7 +451,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.75,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -506,7 +506,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             children: [
               // Görsel Bölümü - Sabit yükseklik
               Container(
-                height: isWeb ? 120 : 100,
+                height: isWeb ? 160 : 140,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -586,7 +586,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
               // Bilgi Bölümü
               Padding(
-                padding: EdgeInsets.all(isWeb ? 8 : 6),
+                padding: EdgeInsets.fromLTRB(isWeb ? 10 : 8, isWeb ? 8 : 6, isWeb ? 10 : 8, isWeb ? 8 : 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -595,12 +595,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 12 : 11,
+                        fontSize: isWeb ? 13 : 12,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: isWeb ? 3 : 2),
+                    SizedBox(height: isWeb ? 4 : 3),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -611,25 +611,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: isWeb ? 14 : 13,
+                              fontSize: isWeb ? 15 : 14,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: isWeb ? 4 : 4,
-                            vertical: 1,
+                            horizontal: isWeb ? 4 : 5,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '${product.stock.toStringAsFixed(0)} ${product.unit}',
                             style: TextStyle(
                               color: AppTheme.primaryColor,
-                              fontSize: isWeb ? 8 : 8,
+                              fontSize: isWeb ? 9 : 9,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
