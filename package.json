@@ -1,0 +1,12 @@
+{
+  "name": "malzemecim-scripts",
+  "version": "1.0.0",
+  "description": "Firebase admin scripts for Malzemecim",
+  "main": "scripts/reset_password.js",
+  "scripts": {
+    "reset-password": "node scripts/reset_password.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

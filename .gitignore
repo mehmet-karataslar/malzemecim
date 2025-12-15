@@ -32,6 +32,12 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+*.dill
+*.dill.track.dill
+*.cache.dill
+*.cache.dill.track.dill
+*.snapshot
+*.lock
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +49,135 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase ve API Key'ler (GÜVENLİK - ASLA COMMIT ETMEYİN!)
+serviceAccountKey.json
+google-services.json
+**/google-services.json
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+*.p8
+*.p12
+*.keystore
+*.jks
+
+# Environment dosyaları
+.env
+.env.local
+.env.*.local
+*.env
+
+# API Key içeren dosyalar
+*api*key*.json
+*secret*.json
+*credentials*.json
+*config*.json
+
+# Firebase options (API key'ler içerir - GÜVENLİK)
+lib/firebase_options.dart
+**/firebase_options.dart
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Diğer hassas dosyalar
+*.pem
+*.key
+secrets/
+credentials/
+
+# Boş dosyalar ve klasörler
+**/.DS_Store
+**/Thumbs.db
+**/.empty
+**/empty
+**/*.empty
+**/.keep
+**/.gitkeep
+# 0 byte dosyalar (boş dosyalar)
+**/*.0
+# Boş klasörler için marker dosyalar
+**/.gitkeep
+**/.keep
+**/.empty_dir
+
+# Derleme ve build dosyaları
+**/build/
+**/dist/
+**/out/
+**/target/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub/
+**/pubspec.lock
+**/*.iml
+**/*.ipr
+**/*.iws
+**/.idea/
+**/.vscode/
+**/.vs/
+**/*.suo
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+
+# Cache ve geçici dosyalar
+**/.cache/
+**/tmp/
+**/temp/
+**/*.tmp
+**/*.temp
+**/*.swp
+**/*.swo
+**/*~
+**/.fuse_hidden*
+**/.directory
+**/.Trash-*
+
+# Log dosyaları
+**/*.log
+**/logs/
+**/*.log.*
+
+# OS dosyaları
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE ve editör dosyaları
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
