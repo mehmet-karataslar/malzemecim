@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -261,29 +262,28 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
               setState(() => _currentImageIndex = index);
             },
             itemBuilder: (context, index) {
-              return Image.network(
-                imageUrls[index],
+              return CachedNetworkImage(
+                imageUrl: imageUrls[index],
                 fit: BoxFit.cover,
                 width: double.infinity,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
+                height: double.infinity,
+                httpHeaders: kIsWeb ? {
+                  'Access-Control-Allow-Origin': '*',
+                } : null,
+                placeholder: (context, url) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                errorWidget: (context, url, error) {
+                  debugPrint('Image error in detail screen: $error');
                   return Container(
                     color: Colors.grey[200],
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
-                      ),
-                    ),
+                    child: const Icon(Icons.image_not_supported,
+                        size: 64, color: Colors.grey),
                   );
                 },
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported,
-                      size: 64, color: Colors.grey),
-                ),
               );
             },
           ),
