@@ -113,6 +113,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
 
+              // Güvenlik Ayarları - Tüm kullanıcılar için
+              const SizedBox(height: 24),
+              _buildSettingsSection(
+                context,
+                title: 'Güvenlik',
+                children: [
+                  _buildSettingsTile(
+                    icon: Icons.security,
+                    title: 'Şifre Değiştir',
+                    subtitle: 'Hesap şifrenizi güncelleyin',
+                    onTap: () => _showSecuritySettings(context, authProvider),
+                  ),
+                ],
+              ),
+
               if (authProvider.isAdmin) ...[
                 const SizedBox(height: 24),
                 _buildSettingsSection(
@@ -130,12 +145,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Veri Yedekleme',
                       subtitle: 'Verileri yedekle ve geri yükle',
                       onTap: () => _showBackupOptions(context),
-                    ),
-                    _buildSettingsTile(
-                      icon: Icons.security,
-                      title: 'Güvenlik',
-                      subtitle: 'Şifre değiştirme',
-                      onTap: () => _showSecuritySettings(context, authProvider),
                     ),
                   ],
                 ),
@@ -221,6 +230,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   Text(user.email, style: TextStyle(color: Colors.grey[600])),
+                  if (user.phone != null && user.phone!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      user.phone!,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -472,85 +488,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
+    bool isLoading = false;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: const [
-            Icon(Icons.security, color: AppTheme.primaryColor),
-            SizedBox(width: 8),
-            Text('Şifre Değiştir'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mevcut Şifre',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Yeni Şifre',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Yeni Şifre (Tekrar)',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.security, color: AppTheme.primaryColor),
+              SizedBox(width: 8),
+              Text('Şifre Değiştir'),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('İptal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (newPasswordController.text != confirmPasswordController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Şifreler eşleşmiyor'),
-                    backgroundColor: AppTheme.errorColor,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: currentPasswordController,
+                  obscureText: true,
+                  enabled: !isLoading,
+                  decoration: const InputDecoration(
+                    labelText: 'Mevcut Şifre',
+                    prefixIcon: Icon(Icons.lock_outline),
                   ),
-                );
-                return;
-              }
-              if (newPasswordController.text.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Şifre en az 6 karakter olmalı'),
-                    backgroundColor: AppTheme.errorColor,
-                  ),
-                );
-                return;
-              }
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(this.context).showSnackBar(
-                const SnackBar(
-                  content: Text('Şifre değiştirme özelliği yakında eklenecek'),
                 ),
-              );
-            },
-            child: const Text('Değiştir'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  enabled: !isLoading,
+                  decoration: const InputDecoration(
+                    labelText: 'Yeni Şifre',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  enabled: !isLoading,
+                  decoration: const InputDecoration(
+                    labelText: 'Yeni Şifre (Tekrar)',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+                if (isLoading) ...[
+                  const SizedBox(height: 16),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: isLoading
+                  ? null
+                  : () => Navigator.pop(dialogContext),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (newPasswordController.text != confirmPasswordController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Şifreler eşleşmiyor'),
+                            backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                        return;
+                      }
+                      if (newPasswordController.text.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Şifre en az 6 karakter olmalı'),
+                            backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      final success = await authProvider.updatePassword(
+                        currentPassword: currentPasswordController.text,
+                        newPassword: newPasswordController.text,
+                      );
+
+                      setDialogState(() => isLoading = false);
+
+                      if (success) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Şifre başarıyla güncellendi'),
+                            backgroundColor: AppTheme.successColor,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(authProvider.errorMessage ?? 'Şifre güncellenirken hata oluştu'),
+                            backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                      }
+                    },
+              child: const Text('Değiştir'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -560,35 +610,169 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (user == null) return;
 
     final nameController = TextEditingController(text: user.name);
+    final businessNameController = TextEditingController(text: user.businessName ?? '');
+    final phoneController = TextEditingController(text: user.phone ?? '');
+    final emailController = TextEditingController(text: user.email);
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+    bool showEmailChange = false;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Profili Düzenle'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'Ad Soyad',
-            prefixIcon: Icon(Icons.person),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('İptal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(this.context).showSnackBar(
-                const SnackBar(
-                  content: Text('Profil güncelleme özelliği yakında eklenecek'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Profili Düzenle'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  enabled: !isLoading,
+                  decoration: const InputDecoration(
+                    labelText: 'Ad Soyad',
+                    prefixIcon: Icon(Icons.person),
+                  ),
                 ),
-              );
-            },
-            child: const Text('Kaydet'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: businessNameController,
+                  enabled: !isLoading,
+                  decoration: const InputDecoration(
+                    labelText: 'İşletme Adı',
+                    prefixIcon: Icon(Icons.business),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  enabled: !isLoading,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Telefon Numarası',
+                    prefixIcon: Icon(Icons.phone),
+                    hintText: '05XX XXX XX XX',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: emailController,
+                        enabled: false,
+                        decoration: const InputDecoration(
+                          labelText: 'E-posta',
+                          prefixIcon: Icon(Icons.email),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              setDialogState(() => showEmailChange = !showEmailChange);
+                            },
+                    ),
+                  ],
+                ),
+                if (showEmailChange) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    enabled: !isLoading,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Mevcut Şifre (E-posta değiştirmek için)',
+                      prefixIcon: Icon(Icons.lock),
+                    ),
+                  ),
+                ],
+                if (isLoading) ...[
+                  const SizedBox(height: 16),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: isLoading
+                  ? null
+                  : () => Navigator.pop(dialogContext),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      setDialogState(() => isLoading = true);
+
+                      // E-posta değişikliği varsa
+                      if (showEmailChange && emailController.text != user.email) {
+                        if (passwordController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('E-posta değiştirmek için şifre gerekli'),
+                              backgroundColor: AppTheme.errorColor,
+                            ),
+                          );
+                          setDialogState(() => isLoading = false);
+                          return;
+                        }
+
+                        final emailSuccess = await authProvider.updateEmail(
+                          newEmail: emailController.text,
+                          password: passwordController.text,
+                        );
+
+                        if (!emailSuccess) {
+                          setDialogState(() => isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(authProvider.errorMessage ?? 'E-posta güncellenirken hata oluştu'),
+                              backgroundColor: AppTheme.errorColor,
+                            ),
+                          );
+                          return;
+                        }
+                      }
+
+                      // Profil bilgilerini güncelle
+                      final profileSuccess = await authProvider.updateProfile(
+                        name: nameController.text.trim(),
+                        businessName: businessNameController.text.trim().isEmpty
+                            ? null
+                            : businessNameController.text.trim(),
+                        phone: phoneController.text.trim().isEmpty
+                            ? null
+                            : phoneController.text.trim(),
+                      );
+
+                      setDialogState(() => isLoading = false);
+
+                      if (profileSuccess) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Profil başarıyla güncellendi'),
+                            backgroundColor: AppTheme.successColor,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(authProvider.errorMessage ?? 'Profil güncellenirken hata oluştu'),
+                            backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                      }
+                    },
+              child: const Text('Kaydet'),
+            ),
+          ],
+        ),
       ),
     );
   }

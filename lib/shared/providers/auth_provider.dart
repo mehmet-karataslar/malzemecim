@@ -186,4 +186,140 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  // Şifre güncelle
+  Future<bool> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      final user = _auth.currentUser;
+      if (user == null) {
+        _errorMessage = 'Kullanıcı bulunamadı';
+        return false;
+      }
+
+      // Mevcut şifreyi doğrula
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // Yeni şifreyi güncelle
+      await user.updatePassword(newPassword);
+
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _handleAuthError(e);
+      return false;
+    } catch (e) {
+      _errorMessage = 'Şifre güncellenirken hata oluştu: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // E-posta değiştir
+  Future<bool> updateEmail({
+    required String newEmail,
+    required String password,
+  }) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      final user = _auth.currentUser;
+      if (user == null) {
+        _errorMessage = 'Kullanıcı bulunamadı';
+        return false;
+      }
+
+      // Mevcut şifreyi doğrula
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // E-postayı güncelle
+      await user.verifyBeforeUpdateEmail(newEmail);
+
+      // Firestore'da e-postayı güncelle
+      await _firestore.collection(AppConstants.usersCollection).doc(user.uid).update({
+        'email': newEmail,
+      });
+
+      // Kullanıcı verilerini yeniden yükle
+      await _loadUserData(user.uid);
+
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _handleAuthError(e);
+      return false;
+    } catch (e) {
+      _errorMessage = 'E-posta güncellenirken hata oluştu: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Profil bilgilerini güncelle
+  Future<bool> updateProfile({
+    String? name,
+    String? businessName,
+    String? phone,
+  }) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      final user = _auth.currentUser;
+      if (user == null) {
+        _errorMessage = 'Kullanıcı bulunamadı';
+        return false;
+      }
+
+      // Firestore'da güncelleme yapılacak alanları hazırla
+      final updateData = <String, dynamic>{};
+      if (name != null && name.isNotEmpty) {
+        updateData['name'] = name;
+      }
+      if (businessName != null) {
+        updateData['businessName'] = businessName.isEmpty ? null : businessName;
+      }
+      if (phone != null) {
+        updateData['phone'] = phone.isEmpty ? null : phone;
+      }
+
+      if (updateData.isEmpty) {
+        _errorMessage = 'Güncellenecek bilgi bulunamadı';
+        return false;
+      }
+
+      // Firestore'da güncelle
+      await _firestore.collection(AppConstants.usersCollection).doc(user.uid).update(updateData);
+
+      // Kullanıcı verilerini yeniden yükle
+      await _loadUserData(user.uid);
+
+      return true;
+    } catch (e) {
+      _errorMessage = 'Profil güncellenirken hata oluştu: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

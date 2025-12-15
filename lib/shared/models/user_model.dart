@@ -6,6 +6,7 @@ class UserModel {
   final String name;
   final String role; // 'admin' veya 'employee'
   final String? businessName; // İşletme adı
+  final String? phone; // Telefon numarası
   final DateTime createdAt;
   final DateTime? lastLoginAt;
   final bool isActive;
@@ -16,6 +17,7 @@ class UserModel {
     required this.name,
     required this.role,
     this.businessName,
+    this.phone,
     required this.createdAt,
     this.lastLoginAt,
     this.isActive = true,
@@ -30,6 +32,7 @@ class UserModel {
       name: data['name'] ?? '',
       role: data['role'] ?? 'employee',
       businessName: data['businessName'],
+      phone: data['phone'],
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       lastLoginAt: data['lastLoginAt'] != null
           ? (data['lastLoginAt'] as Timestamp).toDate()
@@ -45,6 +48,7 @@ class UserModel {
       'name': name,
       'role': role,
       'businessName': businessName,
+      'phone': phone,
       'createdAt': Timestamp.fromDate(createdAt),
       'lastLoginAt': lastLoginAt != null
           ? Timestamp.fromDate(lastLoginAt!)
@@ -63,6 +67,7 @@ class UserModel {
     String? name,
     String? role,
     String? businessName,
+    String? phone,
     DateTime? createdAt,
     DateTime? lastLoginAt,
     bool? isActive,
@@ -73,6 +78,7 @@ class UserModel {
       name: name ?? this.name,
       role: role ?? this.role,
       businessName: businessName ?? this.businessName,
+      phone: phone ?? this.phone,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       isActive: isActive ?? this.isActive,
