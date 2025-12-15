@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../features/products/providers/product_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import 'public_product_detail_screen.dart';
 
 class PublicProductSearchScreen extends StatefulWidget {
   const PublicProductSearchScreen({super.key});
@@ -281,10 +282,11 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          // Ürün detayı göster (sadece görüntüleme)
-          showDialog(
-            context: context,
-            builder: (context) => _buildProductDetailDialog(product),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PublicProductDetailScreen(product: product),
+            ),
           );
         },
         borderRadius: BorderRadius.circular(12),
@@ -368,108 +370,5 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
     );
   }
 
-  Widget _buildProductDetailDialog(ProductModel product) {
-    return Dialog(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      product.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Image
-                    if (product.imageUrls.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: product.imageUrls.first,
-                          width: double.infinity,
-                          height: 200,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    else
-                      Container(
-                        width: double.infinity,
-                        height: 200,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image, size: 64, color: Colors.grey),
-                      ),
-
-                    const SizedBox(height: 16),
-
-                    // Details
-                    _buildDetailRow('Marka', product.brand),
-                    _buildDetailRow('Kategori', product.category),
-                    _buildDetailRow('Barkod', product.barcode),
-                    _buildDetailRow('Fiyat', '${product.price.toStringAsFixed(2)} ₺'),
-                    _buildDetailRow('Stok', '${product.stock.toStringAsFixed(2)} ${product.unit}'),
-                    if (product.description.isNotEmpty)
-                      _buildDetailRow('Açıklama', product.description),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
-  }
 }
 

@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../features/products/providers/product_provider.dart';
 import 'public_product_search_screen.dart';
+import 'public_product_detail_screen.dart';
 import '../../appointments/screens/book_appointment_screen.dart';
 
 class HomePage extends StatefulWidget {
@@ -487,7 +488,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ),
         child: InkWell(
           onTap: () {
-            _tabController.animateTo(1);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PublicProductDetailScreen(product: product),
+              ),
+            );
           },
           borderRadius: BorderRadius.circular(16),
           child: Column(

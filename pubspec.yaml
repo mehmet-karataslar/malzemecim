@@ -68,6 +68,7 @@ dependencies:
   
   # Network
   http: ^1.2.2
+  url_launcher: ^6.3.1
   
   # PDF/Excel export
   pdf: ^3.11.1
