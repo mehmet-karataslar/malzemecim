@@ -2,6 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/theme/app_theme.dart';
+import '../utils/camera_helper_stub.dart'
+    if (dart.library.html) '../utils/camera_helper_web.dart'
+    if (dart.library.io) '../utils/camera_helper_windows.dart' as camera_helper;
+import 'dart:io' if (dart.library.html) '../utils/platform_stub.dart' as io;
 
 class BarcodeScannorPage extends StatefulWidget {
   const BarcodeScannorPage({super.key});
@@ -15,13 +19,65 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
   bool isFlashOn = false;
   String? detectedCode;
   final TextEditingController _manualInputController = TextEditingController();
+  bool _hasError = false;
+  String? _errorMessage;
+  bool _isInitializing = true;
+  List<camera_helper.CameraDevice> _availableCameras = [];
+  camera_helper.CameraDevice? _selectedCamera;
+  bool _isFocusing = false;
+  double _zoomLevel = 1.0;
 
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
+    _initializeScanner();
+  }
+
+  Future<void> _initializeScanner() async {
+    try {
+      // Windows'ta camera paketi ile kamera listesini al (Web değilse)
+      if (!kIsWeb) {
+        try {
+          if (_isWindowsPlatform()) {
+            // Kamera listesini al (USB telefonlar dahil)
+            _availableCameras = await camera_helper.CameraHelper.getAvailableCameras();
+            
+            // Telefon kameralarını öncelikle göster
+            final phoneCameras = await camera_helper.CameraHelper.getPhoneCameras();
+            if (phoneCameras.isNotEmpty) {
+              _selectedCamera = phoneCameras.first;
+              debugPrint('Windows: Telefon kamerası bulundu: ${_selectedCamera!.label}');
+            } else if (_availableCameras.isNotEmpty) {
+              _selectedCamera = _availableCameras.first;
+              debugPrint('Windows: Kamera bulundu: ${_selectedCamera!.label}');
+            }
+            
+            setState(() {
+              _isInitializing = false;
+              _hasError = false;
+            });
+          } else {
+            // Windows değilse normal akış
+            setState(() {
+              _isInitializing = false;
+              _hasError = false;
+            });
+          }
+        } catch (e) {
+          debugPrint('Windows kamera hatası: $e');
+          setState(() {
+            _isInitializing = false;
+            _hasError = false;
+            // Hata olsa bile manuel giriş kullanılabilir
+          });
+        }
+        return;
+      }
+
+      // Web ve mobil için scanner controller oluştur
+      // Web için optimize edilmiş ayarlar - net görüntü için
       scannerController = MobileScannerController(
-        detectionSpeed: DetectionSpeed.noDuplicates,
+        detectionSpeed: kIsWeb ? DetectionSpeed.normal : DetectionSpeed.noDuplicates,
         facing: CameraFacing.back,
         torchEnabled: false,
         returnImage: false, // Performans için görüntü döndürme
@@ -40,6 +96,84 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
           BarcodeFormat.itf,
         ],
       );
+
+      // Controller'ın başlatılmasını bekle (Web için daha uzun süre)
+      await Future.delayed(Duration(milliseconds: kIsWeb ? 2000 : 1500));
+
+      // Web ve Windows için kamera listesini al (mobile_scanner kamera açtıktan sonra)
+      if (kIsWeb || (!kIsWeb && _isWindowsPlatform())) {
+        try {
+          _availableCameras = await camera_helper.CameraHelper.getAvailableCameras();
+          if (_availableCameras.isNotEmpty) {
+            _selectedCamera = _availableCameras.first;
+          }
+        } catch (e) {
+          debugPrint('Kamera listesi alınamadı: $e');
+          // Devam et, liste olmadan da çalışır
+        }
+      }
+
+      // Odaklanma için kısa bir delay
+      if (scannerController != null) {
+        _triggerFocus();
+      }
+
+      setState(() {
+        _isInitializing = false;
+        _hasError = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isInitializing = false;
+        _hasError = true;
+        final isWindows = !kIsWeb && _isWindowsPlatform();
+        _errorMessage = 'Kamera başlatılamadı: $e\n\nLütfen:\n${kIsWeb ? '1. Tarayıcı ayarlarından kamera iznini verin\n2. HTTPS veya localhost kullanın\n' : isWindows ? '1. Windows Ayarlar > Gizlilik > Kamera\'dan izin verin\n2. Başka bir uygulama kamerayı kullanmıyorsa kontrol edin\n' : '1. Uygulama ayarlarından kamera iznini verin\n'}3. USB bağlı telefon için telefonunuzda "USB Debugging" veya "File Transfer" modunu açın';
+      });
+    }
+  }
+
+  /// Platform kontrolü (Web'de false döner)
+  bool _isWindowsPlatform() {
+    if (kIsWeb) return false;
+    try {
+      return io.Platform.isWindows;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Odaklanmayı tetikle
+  void _triggerFocus() {
+    if (scannerController == null || _isFocusing) return;
+    
+    setState(() {
+      _isFocusing = true;
+    });
+
+    // Web için daha sık odaklanma tetikle
+    if (kIsWeb) {
+      // Web'de periyodik olarak odaklanmayı tetikle
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && scannerController != null) {
+          // Web'de manuel odaklanma için tekrar tetikle
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            if (mounted) {
+              setState(() {
+                _isFocusing = false;
+              });
+            }
+          });
+        }
+      });
+    } else {
+      // Mobil için normal odaklanma
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() {
+            _isFocusing = false;
+          });
+        }
+      });
     }
   }
 
@@ -58,10 +192,33 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         actions: [
+          // Web ve Windows için kamera seçimi
+          if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && _availableCameras.length > 1)
+            IconButton(
+              icon: const Icon(Icons.videocam),
+              onPressed: _showCameraSelector,
+              tooltip: 'Kamera Seç',
+            ),
+          // Web ve Windows için kamera değiştirme butonu
+          if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && scannerController != null)
+            IconButton(
+              icon: const Icon(Icons.cameraswitch),
+              onPressed: _switchCamera,
+              tooltip: 'Kamera Değiştir',
+            ),
+          // Odaklanma butonu
+          if (scannerController != null)
+            IconButton(
+              icon: const Icon(Icons.center_focus_strong),
+              onPressed: _triggerFocus,
+              tooltip: 'Odaklan',
+            ),
+          // Web'de flash desteklenmiyor, sadece mobilde göster
           if (!kIsWeb && scannerController != null)
             IconButton(
               icon: Icon(isFlashOn ? Icons.flash_on : Icons.flash_off),
               onPressed: _toggleFlash,
+              tooltip: 'Flaş',
             ),
         ],
       ),
@@ -77,69 +234,455 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
     );
   }
 
+  /// Kamera seçim dialogu göster
+  void _showCameraSelector() {
+    if (_availableCameras.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kamera Seç'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _availableCameras.length,
+            itemBuilder: (context, index) {
+              final camera = _availableCameras[index];
+              final isSelected = _selectedCamera?.deviceId == camera.deviceId;
+              
+              return ListTile(
+                leading: Icon(
+                  camera.isUsbCamera 
+                    ? Icons.usb 
+                    : camera.isPhoneCamera 
+                      ? Icons.phone_android 
+                      : Icons.videocam,
+                  color: isSelected ? AppTheme.primaryColor : null,
+                ),
+                title: Text(camera.label),
+                subtitle: Text(
+                  camera.isUsbCamera 
+                    ? 'USB Kamera' 
+                    : camera.isPhoneCamera 
+                      ? 'Telefon Kamerası' 
+                      : 'Yerleşik Kamera',
+                ),
+                trailing: isSelected 
+                  ? Icon(Icons.check, color: AppTheme.primaryColor)
+                  : null,
+                onTap: () {
+                  _selectCamera(camera);
+                  Navigator.pop(context);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kamera seç
+  Future<void> _selectCamera(camera_helper.CameraDevice camera) async {
+    if (_selectedCamera?.deviceId == camera.deviceId) return;
+
+    setState(() {
+      _selectedCamera = camera;
+      _isInitializing = true;
+    });
+
+    // Eski controller'ı kapat
+    await scannerController?.stop();
+    await scannerController?.dispose();
+
+    // Yeni controller oluştur
+    try {
+      scannerController = MobileScannerController(
+        detectionSpeed: DetectionSpeed.noDuplicates,
+        facing: CameraFacing.back,
+        torchEnabled: false,
+        returnImage: false,
+        autoStart: true,
+        formats: [
+          BarcodeFormat.qrCode,
+          BarcodeFormat.ean13,
+          BarcodeFormat.ean8,
+          BarcodeFormat.code128,
+          BarcodeFormat.code39,
+          BarcodeFormat.code93,
+          BarcodeFormat.codabar,
+          BarcodeFormat.dataMatrix,
+          BarcodeFormat.upcA,
+          BarcodeFormat.upcE,
+          BarcodeFormat.itf,
+        ],
+      );
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      _triggerFocus();
+
+      setState(() {
+        _isInitializing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isInitializing = false;
+        _hasError = true;
+        _errorMessage = 'Kamera seçilemedi: $e';
+      });
+    }
+  }
+
   Widget _buildScannerArea() {
-    if (kIsWeb) {
-      // Web için manuel giriş alanı
+    // Windows'ta kamera listesi göster (Web değilse)
+    if (!kIsWeb && _isWindowsPlatform()) {
+      if (_availableCameras.isEmpty) {
+        // Kamera yok, manuel giriş göster
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.primaryColor, width: 2),
+            color: Colors.blue[50],
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.camera_alt, size: 60, color: AppTheme.primaryColor),
+                const SizedBox(height: 16),
+                Text(
+                  'Kamera Bulunamadı',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'USB ile telefon bağladıysanız:\n1. Telefonunuzda "USB Debugging" veya "File Transfer" modunu açın\n2. Windows Ayarlar > Gizlilik > Kamera\'dan izin verin\n3. Sayfayı yenileyin',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    setState(() {
+                      _isInitializing = true;
+                    });
+                    await _initializeScanner();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Kamerayı Yeniden Tara'),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        // Kamera var, listele
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.primaryColor, width: 2),
+            color: Colors.green[50],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.camera_alt, size: 60, color: Colors.green[700]),
+              const SizedBox(height: 12),
+              Text(
+                '${_availableCameras.length} Kamera Bulundu!',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[700],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _availableCameras.length,
+                  itemBuilder: (context, index) {
+                    final camera = _availableCameras[index];
+                    final isSelected = _selectedCamera?.deviceId == camera.deviceId;
+                    
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: isSelected ? Colors.green[100] : null,
+                      child: ListTile(
+                        leading: Icon(
+                          camera.isPhoneCamera 
+                            ? Icons.phone_android 
+                            : camera.isUsbCamera 
+                              ? Icons.usb 
+                              : Icons.videocam,
+                          color: isSelected ? AppTheme.primaryColor : null,
+                        ),
+                        title: Text(
+                          camera.label,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          camera.isPhoneCamera 
+                            ? '📱 Telefon Kamerası' 
+                            : camera.isUsbCamera 
+                              ? '🔌 USB Kamera' 
+                              : '📷 Yerleşik Kamera',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: isSelected 
+                          ? const Icon(Icons.check, color: Colors.green, size: 20)
+                          : null,
+                        dense: true,
+                        onTap: () {
+                          setState(() {
+                            _selectedCamera = camera;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${camera.label} seçildi'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  '💡 Windows\'ta kamera tarayıcı için web versiyonunu kullanabilirsiniz.\nBurada sadece manuel giriş ve USB barkod okuyucu kullanılabilir.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    // Hata durumu
+    if (_hasError) {
       return Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.primaryColor, width: 2),
-          color: Colors.grey[50],
+          border: Border.all(color: AppTheme.errorColor, width: 2),
+          color: Colors.red[50],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.qr_code_2,
-              size: 100,
-              color: AppTheme.primaryColor.withOpacity(0.6),
-            ),
-            const SizedBox(height: 20),
+            Icon(Icons.error_outline, size: 64, color: AppTheme.errorColor),
+            const SizedBox(height: 16),
             Text(
-              'Web Tarayıcı Modu',
+              'Kamera Hatası',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppTheme.primaryColor,
+                color: AppTheme.errorColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
-              'Barkod bilgisini manuel olarak giriniz',
+              _errorMessage ?? 'Kamera erişimi sağlanamadı',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _initializeScanner,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tekrar Dene'),
+            ),
+            const SizedBox(height: 16),
+            // Manuel giriş alternatifi
+            OutlinedButton.icon(
+              onPressed: () {
+                // Manuel giriş alanına odaklan
+                FocusScope.of(context).requestFocus(
+                  FocusNode()..requestFocus(),
+                );
+              },
+              icon: const Icon(Icons.keyboard),
+              label: const Text('Manuel Giriş Kullan'),
             ),
           ],
         ),
       );
-    } else {
-      // Mobil için kamera tarayıcı
+    }
+
+    // Yükleniyor durumu
+    if (_isInitializing) {
       return Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.primaryColor, width: 3),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
-          child: Stack(
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (scannerController != null)
-                MobileScanner(
-                  controller: scannerController!,
-                  onDetect: _onBarcodeDetect,
-                )
-              else
-                const Center(child: CircularProgressIndicator()),
-
-              // Scanning overlay
-              _buildScanningOverlay(),
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Kamera başlatılıyor...'),
             ],
           ),
         ),
       );
     }
+
+    // Web ve mobil için aynı kamera tarayıcı kullan
+    return Container(
+      margin: EdgeInsets.all(kIsWeb ? 24 : 16),
+      constraints: kIsWeb 
+        ? const BoxConstraints(maxWidth: 1200, maxHeight: 800)
+        : null,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(kIsWeb ? 20 : 16),
+        border: Border.all(
+          color: AppTheme.primaryColor, 
+          width: kIsWeb ? 4 : 3,
+        ),
+        boxShadow: kIsWeb ? [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 20,
+            spreadRadius: 5,
+          ),
+        ] : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(kIsWeb ? 16 : 13),
+        child: Stack(
+          children: [
+            if (scannerController != null)
+              AspectRatio(
+                aspectRatio: kIsWeb ? 16 / 9 : 4 / 3,
+                child: MobileScanner(
+                  controller: scannerController!,
+                  onDetect: _onBarcodeDetect,
+                  fit: kIsWeb ? BoxFit.contain : BoxFit.cover, // Web için contain - daha net görüntü
+                  errorBuilder: (context, error, child) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.camera_alt, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Kamera erişimi gerekli',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              kIsWeb
+                                ? 'Lütfen tarayıcınızın kamera iznini verin\n(HTTPS veya localhost gerekli)'
+                                : 'Lütfen uygulama ayarlarından kamera iznini verin',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _initializeScanner,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Tekrar Dene'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              )
+            else
+              const Center(child: CircularProgressIndicator()),
+
+            // Odaklanma göstergesi
+            if (_isFocusing)
+              Center(
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: AppTheme.primaryColor,
+                      width: 3,
+                    ),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+              ),
+
+            // Scanning overlay
+            _buildScanningOverlay(),
+
+            // Web ve Windows için kamera bilgisi
+            if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && _selectedCamera != null)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _selectedCamera!.isUsbCamera 
+                          ? Icons.usb 
+                          : _selectedCamera!.isPhoneCamera 
+                            ? Icons.phone_android 
+                            : Icons.videocam,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _selectedCamera!.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildScanningOverlay() {
@@ -333,5 +876,12 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
     });
 
     scannerController!.toggleTorch();
+  }
+
+  void _switchCamera() {
+    if (scannerController == null) return;
+    
+    // Web'de kamera değiştirme
+    scannerController!.switchCamera();
   }
 }

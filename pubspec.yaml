@@ -46,6 +46,7 @@ dependencies:
   # QR/Barcode
   mobile_scanner: ^5.2.3
   barcode_widget: ^2.0.4
+  camera: ^0.11.0+2
   
   # Image handling
   image_picker: ^1.1.2

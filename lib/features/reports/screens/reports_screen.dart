@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
+// Helper to create a color with opacity without using deprecated getters
+Color _withOpacity(Color color, double opacity) {
+  final int a = (opacity * 255).round() & 0xFF;
+  return Color((a << 24) | (color.toARGB32() & 0x00FFFFFF));
+}
+
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
@@ -10,44 +16,55 @@ class ReportsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Raporlar')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            _buildReportCard(
-              context,
-              title: 'Düşük Stok',
-              icon: Icons.trending_down,
-              color: AppTheme.errorColor,
-              subtitle: '5 ürün',
-              onTap: () => _showLowStockReport(context),
-            ),
-            _buildReportCard(
-              context,
-              title: 'Veresiye Toplam',
-              icon: Icons.account_balance_wallet,
-              color: AppTheme.warningColor,
-              subtitle: '₺3,450',
-              onTap: () => _showCreditSummary(context),
-            ),
-            _buildReportCard(
-              context,
-              title: 'En Çok Aranan',
-              icon: Icons.trending_up,
-              color: AppTheme.successColor,
-              subtitle: '25 ürün',
-              onTap: () => _showPopularProducts(context),
-            ),
-            _buildReportCard(
-              context,
-              title: 'Aylık Özet',
-              icon: Icons.calendar_month,
-              color: AppTheme.primaryColor,
-              subtitle: 'Ocak 2025',
-              onTap: () => _showMonthlySummary(context),
-            ),
-          ],
+        child: Builder(
+          builder: (ctx) {
+            final items = [
+              {
+                'title': 'Düşük Stok',
+                'icon': Icons.trending_down,
+                'color': AppTheme.errorColor,
+                'subtitle': '5 ürün',
+                'onTap': () => _showLowStockReport(ctx),
+              },
+              {
+                'title': 'Veresiye Toplam',
+                'icon': Icons.account_balance_wallet,
+                'color': AppTheme.warningColor,
+                'subtitle': '₺3,450',
+                'onTap': () => _showCreditSummary(ctx),
+              },
+              {
+                'title': 'En Çok Aranan',
+                'icon': Icons.trending_up,
+                'color': AppTheme.successColor,
+                'subtitle': '25 ürün',
+                'onTap': () => _showPopularProducts(ctx),
+              },
+              {
+                'title': 'Aylık Özet',
+                'icon': Icons.calendar_month,
+                'color': AppTheme.primaryColor,
+                'subtitle': 'Ocak 2025',
+                'onTap': () => _showMonthlySummary(ctx),
+              },
+            ];
+
+            return ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, index) {
+                final it = items[index];
+                return _buildReportCard(
+                  ctx,
+                  title: it['title'] as String,
+                  icon: it['icon'] as IconData,
+                  color: it['color'] as Color,
+                  subtitle: it['subtitle'] as String,
+                  onTap: it['onTap'] as VoidCallback,
+                );
+              },
+            );
+          },
         ),
       ),
     );
@@ -61,38 +78,102 @@ class ReportsScreen extends StatelessWidget {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return Card(
+    // Modern, colorful report card with gradient background and soft shadow
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          constraints: const BoxConstraints(minHeight: 150),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [_withOpacity(color, 0.12), Colors.white],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _withOpacity(color, 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+            border: Border.all(color: _withOpacity(color, 0.06)),
+          ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 32, color: color),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Colored circular icon with its own gradient
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [color, _withOpacity(color, 0.7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _withOpacity(color, 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(icon, size: 28, color: Colors.white),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Title / subtitle column
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          textAlign: TextAlign.start,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black87,
+                                fontSize: 18,
+                              ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          textAlign: TextAlign.start,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: _withOpacity(color, 0.85),
+                                fontWeight: FontWeight.w700,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Chevron
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Icon(Icons.chevron_right, size: 20, color: _withOpacity(color, 0.9)),
+                  ),
+                ],
               ),
             ],
           ),

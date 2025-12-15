@@ -28,8 +28,34 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   
-  <!-- Security policies -->
+  <!-- Security policies - Kamera erişimi için gerekli -->
   <meta http-equiv="Permissions-Policy" content="camera=*, microphone=(), geolocation=(), payment=()">
+  
+  <!-- Web için kamera ve barkod tarama desteği -->
+  <script>
+    // Kamera erişimi için gerekli izinleri kontrol et
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      console.log('Kamera API desteği mevcut');
+      
+      // Web için yüksek kalite kamera constraints
+      // Bu mobile_scanner tarafından kullanılacak
+      window._cameraConstraints = {
+        video: {
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          facingMode: 'environment',
+          focusMode: 'continuous',
+          advanced: [
+            { zoom: { ideal: 1.0 } },
+            { exposureMode: 'continuous' },
+            { whiteBalanceMode: 'continuous' },
+          ]
+        }
+      };
+    } else {
+      console.warn('Kamera API desteği yok - HTTPS veya localhost gerekli');
+    }
+  </script>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
