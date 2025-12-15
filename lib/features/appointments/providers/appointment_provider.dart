@@ -1,165 +1,139 @@
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../shared/models/appointment_model.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:flutter/foundation.dart';
+import '../../../../shared/models/appointment_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AppointmentProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
   List<AppointmentModel> _appointments = [];
   bool _isLoading = false;
   String? _errorMessage;
+  DateTime _selectedDate = DateTime.now();
 
-  // Getters
   List<AppointmentModel> get appointments => _appointments;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  DateTime get selectedDate => _selectedDate;
 
-  // Duruma göre filtrelenmiş randevular
-  List<AppointmentModel> getPendingAppointments() {
-    return _appointments.where((apt) => apt.isPending).toList();
+  // Belirli bir günün randevularını getir
+  List<AppointmentModel> getAppointmentsForDate(DateTime date) {
+    return _appointments.where((appointment) {
+      return appointment.appointmentDate.year == date.year &&
+             appointment.appointmentDate.month == date.month &&
+             appointment.appointmentDate.day == date.day;
+    }).toList()
+      ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
   }
 
-  List<AppointmentModel> getConfirmedAppointments() {
-    return _appointments.where((apt) => apt.isConfirmed).toList();
-  }
-
-  List<AppointmentModel> getCompletedAppointments() {
-    return _appointments.where((apt) => apt.isCompleted).toList();
-  }
-
-  // İşletme randevularını yükle
-  Future<void> loadBusinessAppointments(String businessId) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
-
-      final snapshot = await _firestore
-          .collection(AppConstants.appointmentsCollection)
-          .where('businessId', isEqualTo: businessId)
-          .orderBy('appointmentDate', descending: false)
-          .get();
-
-      _appointments = snapshot.docs
-          .map((doc) => AppointmentModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      _errorMessage = 'Randevular yüklenirken hata oluştu: $e';
-      print('Error loading appointments: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Randevu oluştur (herkese açık)
-  Future<bool> createAppointment({
-    required String businessId,
-    required String customerName,
-    required String customerPhone,
-    String? customerEmail,
-    required DateTime appointmentDate,
-    String? notes,
-  }) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
-
-      final appointmentData = {
-        'businessId': businessId,
-        'customerName': customerName,
-        'customerPhone': customerPhone,
-        'customerEmail': customerEmail,
-        'appointmentDate': Timestamp.fromDate(appointmentDate),
-        'status': 'pending',
-        'notes': notes,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      await _firestore
-          .collection(AppConstants.appointmentsCollection)
-          .add(appointmentData);
-
-      // Eğer mevcut işletme randevuları yüklüyse, yeniden yükle
-      if (_appointments.isNotEmpty && _appointments.first.businessId == businessId) {
-        await loadBusinessAppointments(businessId);
-      }
-
-      return true;
-    } catch (e) {
-      _errorMessage = 'Randevu oluşturulurken hata oluştu: $e';
-      print('Error creating appointment: $e');
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Randevu durumunu güncelle
-  Future<bool> updateAppointmentStatus(
-    String appointmentId,
-    String newStatus,
-  ) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
-
-      await _firestore
-          .collection(AppConstants.appointmentsCollection)
-          .doc(appointmentId)
-          .update({'status': newStatus});
-
-      // Listeyi güncelle
-      final index = _appointments.indexWhere((apt) => apt.id == appointmentId);
-      if (index != -1) {
-        _appointments[index] = _appointments[index].copyWith(status: newStatus);
-      }
-
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = 'Randevu güncellenirken hata oluştu: $e';
-      print('Error updating appointment: $e');
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Randevu sil
-  Future<bool> deleteAppointment(String appointmentId) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
-
-      await _firestore
-          .collection(AppConstants.appointmentsCollection)
-          .doc(appointmentId)
-          .delete();
-
-      _appointments.removeWhere((apt) => apt.id == appointmentId);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = 'Randevu silinirken hata oluştu: $e';
-      print('Error deleting appointment: $e');
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Hata mesajını temizle
-  void clearError() {
-    _errorMessage = null;
+  // Tarih seçimi
+  void selectDate(DateTime date) {
+    _selectedDate = date;
     notifyListeners();
   }
-}
 
+  // Randevuları yükle (Realtime Listener)
+  void listenToAppointments() {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Sadece bu işletmenin randevularını dinle
+      _firestore
+          .collection('appointments')
+          .where('businessId', isEqualTo: user.uid)
+          .snapshots()
+          .listen((snapshot) {
+        _appointments = snapshot.docs
+            .map((doc) => AppointmentModel.fromFirestore(doc))
+            .toList();
+        
+        _isLoading = false;
+        notifyListeners();
+      }, onError: (error) {
+        _errorMessage = 'Randevular yüklenirken hata: $error';
+        _isLoading = false;
+        notifyListeners();
+      });
+    } catch (e) {
+      _errorMessage = 'Beklenmeyen hata: $e';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Randevu Ekle
+  Future<void> addAppointment({
+    required String customerName,
+    required String customerPhone,
+    required DateTime date,
+    required DateTime time,
+    String? customerEmail,
+    String? notes,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Kullanıcı girişi yapılmamış');
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Tarih ve zamanı birleştir
+      final appointmentDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+
+      final newAppointment = AppointmentModel(
+        id: '', // Firestore oluşturacak
+        businessId: user.uid,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerEmail: customerEmail,
+        appointmentDate: appointmentDateTime,
+        status: 'confirmed', // Varsayılan onaylı
+        notes: notes,
+        createdAt: DateTime.now(),
+      );
+
+      await _firestore.collection('appointments').add(newAppointment.toFirestore());
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Randevu eklenemedi: $e';
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // Randevu Durumu Güncelle
+  Future<void> updateStatus(String id, String newStatus) async {
+    try {
+      await _firestore.collection('appointments').doc(id).update({
+        'status': newStatus,
+      });
+    } catch (e) {
+      print('Status update error: $e');
+      rethrow;
+    }
+  }
+
+  // Randevu Sil
+  Future<void> deleteAppointment(String id) async {
+    try {
+      await _firestore.collection('appointments').doc(id).delete();
+    } catch (e) {
+      print('Delete error: $e');
+      rethrow;
+    }
+  }
+}

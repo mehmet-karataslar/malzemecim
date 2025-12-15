@@ -445,9 +445,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ? GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    childAspectRatio: 0.75,
+                    childAspectRatio: 0.65,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
@@ -458,9 +458,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   },
                 )
               : SizedBox(
-                  height: 220,
+                  height: 280,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     itemCount: _featuredProducts.length,
                     itemBuilder: (context, index) {
                       final product = _featuredProducts[index];
@@ -474,8 +475,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildProductCard(ProductModel product, bool isWeb) {
+    final cardWidth = isWeb ? null : 180.0;
+    
     return Container(
-      width: isWeb ? null : 170,
+      width: cardWidth,
       margin: EdgeInsets.only(right: isWeb ? 0 : 12),
       child: Card(
         elevation: 4,
@@ -488,102 +491,110 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           },
           borderRadius: BorderRadius.circular(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
+              // Görsel Bölümü - Sabit yükseklik
+              Container(
+                height: isWeb ? 200 : 180,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
                   ),
-                  child: Stack(
-                    children: [
-                      product.imageUrls.isNotEmpty
-                          ? ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
-                              ),
-                              child: CachedNetworkImage(
-                                imageUrl: product.imageUrls.first,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                placeholder: (context, url) => Container(
-                                  color: Colors.grey[200],
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.image,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    product.imageUrls.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                            child: CachedNetworkImage(
+                              imageUrl: product.imageUrls.first,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
                                 ),
                               ),
-                            )
-                          : Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.image,
-                                size: 48,
-                                color: Colors.grey,
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.image,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
-                      if (product.stock <= product.minStock)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Icon(
+                              Icons.image,
+                              size: 48,
+                              color: Colors.grey,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Az Stok',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ),
+                    if (product.stock <= product.minStock)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Az Stok',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
+              // Bilgi Bölümü
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: isWeb ? 14 : 13,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          '${product.price.toStringAsFixed(2)} ₺',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        Flexible(
+                          child: Text(
+                            '${product.price.toStringAsFixed(2)} ₺',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isWeb ? 18 : 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
