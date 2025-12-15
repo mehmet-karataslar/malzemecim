@@ -37,16 +37,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   Future<void> _initializeScanner() async {
     try {
-      // Windows'ta camera paketi ile kamera listesini al (Web değilse)
+      // Windows kontrolü (sadece Windows için özel işlem)
       if (!kIsWeb) {
-        try {
-          // Platform kontrolü için conditional import kullan
-          final isWindows = _isWindowsPlatform();
-          if (isWindows) {
-            // Kamera listesini al (USB telefonlar dahil)
+        final isWindows = _isWindowsPlatform();
+        if (isWindows) {
+          // Windows için özel işlem
+          try {
             _availableCameras = await camera_helper.CameraHelper.getAvailableCameras();
-            
-            // Telefon kameralarını öncelikle göster
             final phoneCameras = await camera_helper.CameraHelper.getPhoneCameras();
             if (phoneCameras.isNotEmpty) {
               _selectedCamera = phoneCameras.first;
@@ -60,26 +57,19 @@ class _ScannerScreenState extends State<ScannerScreen> {
               _isInitializing = false;
               _hasError = false;
             });
-          } else {
-            // Windows değilse normal akış
+          } catch (e) {
+            debugPrint('Windows kamera hatası: $e');
             setState(() {
               _isInitializing = false;
               _hasError = false;
             });
           }
-        } catch (e) {
-          debugPrint('Windows kamera hatası: $e');
-          setState(() {
-            _isInitializing = false;
-            _hasError = false;
-            // Hata olsa bile manuel giriş kullanılabilir
-          });
+          return; // Windows için burada çık
         }
-        return;
+        // Mobil platformlar (Android/iOS) için devam et
       }
 
-      // Web ve mobil için scanner controller oluştur
-      // Web için optimize edilmiş ayarlar - net görüntü için
+      // Web ve mobil (Android/iOS) için scanner controller oluştur
       scannerController = MobileScannerController(
         detectionSpeed: kIsWeb ? DetectionSpeed.normal : DetectionSpeed.noDuplicates,
         facing: CameraFacing.back,
@@ -101,11 +91,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ],
       );
 
-      // Controller'ın başlatılmasını bekle (Web için daha uzun süre)
+      // Controller'ın başlatılmasını bekle
       await Future.delayed(Duration(milliseconds: kIsWeb ? 2000 : 1500));
 
-      // Web ve Windows için kamera listesini al (mobile_scanner kamera açtıktan sonra)
-      if (kIsWeb || (!kIsWeb && _isWindowsPlatform())) {
+      // Web için kamera listesini al (mobilde mobile_scanner kendi yönetir)
+      if (kIsWeb) {
         try {
           _availableCameras = await camera_helper.CameraHelper.getAvailableCameras();
           if (_availableCameras.isNotEmpty) {
@@ -113,7 +103,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
           }
         } catch (e) {
           debugPrint('Kamera listesi alınamadı: $e');
-          // Devam et, liste olmadan da çalışır
         }
       }
 
@@ -131,7 +120,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         _isInitializing = false;
         _hasError = true;
         final isWindows = !kIsWeb && _isWindowsPlatform();
-        _errorMessage = 'Kamera başlatılamadı: $e\n\nLütfen:\n${kIsWeb ? '1. Tarayıcı ayarlarından kamera iznini verin\n2. HTTPS veya localhost kullanın\n' : isWindows ? '1. Windows Ayarlar > Gizlilik > Kamera\'dan izin verin\n2. Başka bir uygulama kamerayı kullanmıyorsa kontrol edin\n' : '1. Uygulama ayarlarından kamera iznini verin\n'}3. USB bağlı telefon için telefonunuzda "USB Debugging" veya "File Transfer" modunu açın';
+        _errorMessage = 'Kamera başlatılamadı: $e\n\nLütfen:\n${kIsWeb ? '1. Tarayıcı ayarlarından kamera iznini verin\n2. HTTPS veya localhost kullanın\n' : isWindows ? '1. Windows Ayarlar > Gizlilik > Kamera\'dan izin verin\n2. Başka bir uygulama kamerayı kullanmıyorsa kontrol edin\n' : '1. Uygulama ayarlarından kamera iznini verin\n2. Cihazınızın kamerasının çalıştığından emin olun\n'}3. Uygulamayı yeniden başlatın';
       });
     }
   }
