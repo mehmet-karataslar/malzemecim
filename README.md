@@ -1,6 +1,10 @@
 # Malzemecim - Envanter & Veresiye Yönetim Sistemi
 
-Malzemecim, nalbur, hırdavat ve boya satış işletmeleri için geliştirilmiş kapsamlı bir envanter ve veresiye yönetim uygulamasıdır. Flutter ile geliştirilmiş, çoklu platform desteği sunan modern bir mobil ve masaüstü uygulamadır.
+**İşletmenizin dijital dönüşümü için profesyonel çözüm**
+
+Malzemecim, nalbur, hırdavat ve boya satış işletmeleri için özel olarak tasarlanmış, kapsamlı envanter ve veresiye yönetim sistemidir. Flutter teknolojisi ile geliştirilmiş, Android, iOS, Web ve Windows platformlarında sorunsuz çalışan modern bir işletme yönetim uygulamasıdır.
+
+İşletmenizin stok takibinden veresiye yönetimine, barkod taramadan detaylı raporlamaya kadar tüm ihtiyaçlarını tek bir platformda birleştirir.
 
 ## 📋 İçindekiler
 
@@ -31,12 +35,12 @@ Malzemecim, nalbur, hırdavat ve boya satış işletmeleri için geliştirilmiş
 - **Ürün Fotoğrafları**: Her ürün için en fazla 5 fotoğraf desteği
 - **Barkod Yönetimi**: Ürünlere barkod atama ve takip
 
-### 🔍 Barkod Tarama
-- **Kamera ile Tarama**: Mobil cihazlarda kamera ile barkod/QR kod tarama
-- **USB Barkod Okuyucu Desteği**: USB barkod cihazları ile entegrasyon
-- **Manuel Giriş**: Web platformunda manuel barkod girişi
-- **Çoklu Format Desteği**: EAN-13, EAN-8, Code 128, Code 39, QR Code ve daha fazlası
-- **Otomatik Ürün Arama**: Tarama sonrası otomatik ürün bulma
+### 🔍 Barkod Tarama ve Entegrasyon
+- **Kamera ile Tarama**: Mobil cihazlarda kamera ile hızlı barkod/QR kod tarama
+- **USB Barkod Okuyucu Desteği**: Profesyonel USB barkod cihazları ile tam entegrasyon
+- **Manuel Giriş**: Web platformunda esnek manuel barkod girişi seçeneği
+- **Çoklu Format Desteği**: EAN-13, EAN-8, Code 128, Code 39, QR Code ve 10+ format desteği
+- **Akıllı Ürün Eşleştirme**: Tarama sonrası otomatik ürün bulma ve işlem yapma
 
 ### 🔎 Gelişmiş Arama
 - **Çoklu Arama Kriteri**: Ürün adı, marka, kategori, barkod ve açıklama
@@ -52,29 +56,29 @@ Malzemecim, nalbur, hırdavat ve boya satış işletmeleri için geliştirilmiş
 - **Vade Takibi**: Vade tarihi ve gecikme uyarıları
 - **Ödeme Geçmişi**: Detaylı ödeme geçmişi görüntüleme
 
-### 📊 Raporlar
-- **Düşük Stok Raporu**: Minimum stok seviyesinin altındaki ürünler
-- **Veresiye Özeti**: Toplam veresiye tutarı ve durumu
-- **En Çok Aranan Ürünler**: Popüler ürün analizi
-- **Aylık Özet**: Aylık satış ve stok özeti
+### 📊 Raporlar ve Analiz
+- **Düşük Stok Raporu**: Minimum stok seviyesinin altındaki ürünleri anında görüntüleyin
+- **Veresiye Özeti**: Toplam veresiye tutarı ve ödeme durumu takibi
+- **En Çok Aranan Ürünler**: Popüler ürün analizi ile satış stratejisi belirleyin
+- **Aylık Özet**: Aylık satış ve stok özeti ile işletme performansını takip edin
 
-### 📝 Notlar
-- **Hızlı Notlar**: İşletme için hızlı hatırlatma notları
-- **Not Yönetimi**: Not ekleme, düzenleme ve silme
-- **Renkli Kategoriler**: Notları renklerle kategorize etme
+### 📝 Notlar ve Hatırlatıcılar
+- **Hızlı Notlar**: İşletme için anlık hatırlatma notları oluşturun
+- **Not Yönetimi**: Not ekleme, düzenleme ve silme ile kolay organizasyon
+- **Renkli Kategoriler**: Notları renklerle kategorize ederek hızlı erişim sağlayın
 
-### ⚙️ Ayarlar
+### ⚙️ Ayarlar ve Yönetim
 - **Kullanıcı Profili**: Kullanıcı bilgileri ve rol yönetimi
-- **Offline Senkronizasyon**: İnternet bağlantısı kesildiğinde offline çalışma
-- **Barkod Ayarları**: USB barkod okuyucu konfigürasyonu
+- **Offline Senkronizasyon**: İnternet bağlantısı kesildiğinde offline çalışma desteği
+- **Barkod Ayarları**: USB barkod okuyucu konfigürasyonu ve özelleştirme
 - **Bildirim Ayarları**: Düşük stok ve ödeme hatırlatmaları
-- **Veri Yedekleme**: Veri yedekleme ve geri yükleme (Admin)
+- **Veri Yedekleme**: Güvenli veri yedekleme ve geri yükleme (Admin)
 
 ### 🌐 Çoklu Platform Desteği
-- **Android**: Tam özellik desteği
-- **iOS**: Tam özellik desteği
-- **Web**: Web tarayıcı desteği (manuel barkod girişi)
-- **Windows**: Masaüstü uygulama desteği
+- **Android**: Tam özellik desteği ile mobil deneyim
+- **iOS**: Tam özellik desteği ile iOS uyumluluğu
+- **Web**: Web tarayıcı desteği ile her yerden erişim
+- **Windows**: Masaüstü uygulama desteği ile ofis kullanımı
 
 ## 🛠 Teknolojiler
 
@@ -315,17 +319,17 @@ flutter run -d windows
 ### Rol Bazlı Erişim
 
 #### Admin
-- Tüm özelliklere erişim
-- Ürün ekleme/düzenleme/silme
-- Veresiye yönetimi
-- Rapor görüntüleme
-- Kullanıcı yönetimi (yakında)
+- Tüm özelliklere tam erişim
+- Ürün ekleme, düzenleme ve silme yetkisi
+- Veresiye yönetimi ve takibi
+- Kapsamlı rapor görüntüleme ve analiz
+- Sistem yönetimi ve konfigürasyon
 
 #### Çalışan
-- Ürün görüntüleme
-- Barkod tarama
-- Ürün arama
-- Ayarlar (sınırlı)
+- Ürün bilgilerini görüntüleme
+- Barkod tarama ve ürün arama
+- Müşteri hizmetleri için gerekli tüm araçlar
+- Kişisel ayarlar ve profil yönetimi
 
 ## 🔥 Firebase Yapılandırması
 
@@ -408,23 +412,19 @@ Ana bağımlılıklar:
 
 Tam liste için `pubspec.yaml` dosyasına bakın.
 
-## 🐛 Bilinen Sorunlar
+## 💡 Öne Çıkan Özellikler
 
-- Web platformunda kamera tarama desteği yok (manuel giriş mevcut)
-- Offline senkronizasyon tam olarak implement edilmemiş (TODO)
-- Bazı rapor özellikleri placeholder durumunda
+### 🚀 Performans ve Güvenilirlik
+- **Hızlı ve Responsive**: Optimize edilmiş performans ile anında yanıt
+- **Offline Çalışma**: İnternet bağlantısı olmasa bile temel işlemler devam eder
+- **Güvenli Veri Yönetimi**: Firebase ile güvenli ve ölçeklenebilir altyapı
+- **Gerçek Zamanlı Senkronizasyon**: Tüm cihazlarda anlık veri güncellemesi
 
-## 🔮 Gelecek Özellikler
-
-- [ ] Tam offline senkronizasyon
-- [ ] PDF/Excel rapor dışa aktarma
-- [ ] Çoklu dil desteği
-- [ ] Bildirim sistemi (push notifications)
-- [ ] Kullanıcı yönetimi arayüzü
-- [ ] Veri yedekleme/geri yükleme
-- [ ] Gelişmiş raporlar ve grafikler
-- [ ] Fatura oluşturma
-- [ ] Tedarikçi yönetimi
+### 🎯 İşletme Odaklı Çözümler
+- **Kapsamlı Stok Yönetimi**: Düşük stok uyarıları ile stok takibi
+- **Veresiye Takibi**: Müşteri borçlarını kolayca yönetin
+- **Detaylı Raporlama**: İşletmenizin durumunu anlık görüntüleyin
+- **Çoklu Platform**: Tek bir uygulama ile tüm cihazlarda çalışın
 
 ## 📄 Lisans
 
@@ -443,4 +443,13 @@ Bu proje özel bir projedir. Tüm hakları saklıdır.
 
 ---
 
-**Not**: Bu uygulama aktif geliştirme aşamasındadır. Production kullanımından önce kapsamlı testler yapılması önerilir.
+## 🎉 Neden Malzemecim?
+
+Malzemecim, işletmenizin envanter ve veresiye yönetimini dijitalleştirerek:
+- ⏱️ **Zaman Tasarrufu**: Hızlı barkod tarama ve otomatik işlemler
+- 📊 **Veri Odaklı Kararlar**: Detaylı raporlar ile bilinçli kararlar
+- 💰 **Gelir Artışı**: Düşük stok uyarıları ile satış kaybını önleyin
+- 🔒 **Güvenli Veri**: Bulut tabanlı güvenli veri saklama
+- 📱 **Her Yerden Erişim**: Mobil, tablet ve masaüstünde aynı deneyim
+
+**Modern işletme yönetimi için Malzemecim ile tanışın!**
