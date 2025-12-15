@@ -97,14 +97,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             fit: BoxFit.contain,
           ),
         ),
-        title: const Text('Malzemecim'),
-        backgroundColor: AppTheme.primaryColor,
+        title: const Text(
+          'Malzemecim',
+          style: TextStyle(
+            color: AppTheme.primaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        iconTheme: const IconThemeData(color: AppTheme.primaryColor),
         actions: [
           Consumer<AuthProvider>(
             builder: (context, authProvider, child) {
               if (authProvider.isAuthenticated) {
                 return PopupMenuButton<String>(
-                  icon: const Icon(Icons.account_circle),
+                  icon: const Icon(Icons.account_circle, color: AppTheme.primaryColor),
                   onSelected: (value) {
                     if (value == 'logout') {
                       authProvider.signOut();
@@ -125,7 +133,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 );
               } else {
                 return IconButton(
-                  icon: const Icon(Icons.login),
+                  icon: const Icon(Icons.login, color: AppTheme.primaryColor),
                   tooltip: 'Giriş Yap',
                   onPressed: () {
                     Navigator.of(context).push(
@@ -293,6 +301,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildCategoriesSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWeb = screenWidth > 600;
+    final crossAxisCount = isWeb ? 8 : 4;
+    final childAspectRatio = isWeb ? 1.0 : 0.85;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -316,16 +329,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: isWeb ? 8 : 12,
+              mainAxisSpacing: isWeb ? 8 : 12,
             ),
             itemCount: _categories.length,
             itemBuilder: (context, index) {
               final category = _categories[index];
-              return _buildCategoryCard(category);
+              return _buildCategoryCard(category, isWeb);
             },
           ),
         ],
@@ -333,7 +346,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildCategoryCard(Map<String, dynamic> category) {
+  Widget _buildCategoryCard(Map<String, dynamic> category, bool isWeb) {
     final gradient = category['gradient'] as List<Color>;
     return InkWell(
       onTap: () {
@@ -360,7 +373,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(isWeb ? 8 : 12),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 shape: BoxShape.circle,
@@ -368,20 +381,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               child: Icon(
                 category['icon'] as IconData,
                 color: Colors.white,
-                size: 28,
+                size: isWeb ? 20 : 28,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              category['name'] as String,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+            SizedBox(height: isWeb ? 4 : 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                category['name'] as String,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isWeb ? 9 : 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -390,6 +406,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildFeaturedProductsSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWeb = screenWidth > 600;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -422,26 +441,42 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 220,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _featuredProducts.length,
-              itemBuilder: (context, index) {
-                final product = _featuredProducts[index];
-                return _buildProductCard(product);
-              },
-            ),
-          ),
+          isWeb
+              ? GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    childAspectRatio: 0.75,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: _featuredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = _featuredProducts[index];
+                    return _buildProductCard(product, isWeb);
+                  },
+                )
+              : SizedBox(
+                  height: 220,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _featuredProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = _featuredProducts[index];
+                      return _buildProductCard(product, isWeb);
+                    },
+                  ),
+                ),
         ],
       ),
     );
   }
 
-  Widget _buildProductCard(ProductModel product) {
+  Widget _buildProductCard(ProductModel product, bool isWeb) {
     return Container(
-      width: 170,
-      margin: const EdgeInsets.only(right: 12),
+      width: isWeb ? null : 170,
+      margin: EdgeInsets.only(right: isWeb ? 0 : 12),
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(

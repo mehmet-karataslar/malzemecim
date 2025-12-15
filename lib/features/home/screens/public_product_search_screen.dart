@@ -154,37 +154,72 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
 
               // Category Filter
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 60,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      final isSelected = category['name'] == _selectedCategory;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          selected: isSelected,
-                          label: Text(category['name'] as String),
-                          avatar: Icon(
-                            category['icon'] as IconData,
-                            size: 18,
-                            color: isSelected ? Colors.white : category['color'] as Color,
-                          ),
-                          selectedColor: category['color'] as Color,
-                          checkmarkColor: Colors.white,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedCategory = category['name'] as String;
-                              _filterProducts();
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final isWeb = screenWidth > 600;
+                    
+                    return isWeb
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _categories.map((category) {
+                                final isSelected = category['name'] == _selectedCategory;
+                                return FilterChip(
+                                  selected: isSelected,
+                                  label: Text(category['name'] as String),
+                                  avatar: Icon(
+                                    category['icon'] as IconData,
+                                    size: 16,
+                                    color: isSelected ? Colors.white : category['color'] as Color,
+                                  ),
+                                  selectedColor: category['color'] as Color,
+                                  checkmarkColor: Colors.white,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      _selectedCategory = category['name'] as String;
+                                      _filterProducts();
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          )
+                        : SizedBox(
+                            height: 60,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              itemCount: _categories.length,
+                              itemBuilder: (context, index) {
+                                final category = _categories[index];
+                                final isSelected = category['name'] == _selectedCategory;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    selected: isSelected,
+                                    label: Text(category['name'] as String),
+                                    avatar: Icon(
+                                      category['icon'] as IconData,
+                                      size: 18,
+                                      color: isSelected ? Colors.white : category['color'] as Color,
+                                    ),
+                                    selectedColor: category['color'] as Color,
+                                    checkmarkColor: Colors.white,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        _selectedCategory = category['name'] as String;
+                                        _filterProducts();
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                  },
                 ),
               ),
 
@@ -208,20 +243,29 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
               else
                 SliverPadding(
                   padding: const EdgeInsets.all(8),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final product = _filteredProducts[index];
-                        return _buildProductCard(product);
-                      },
-                      childCount: _filteredProducts.length,
-                    ),
+                  sliver: Builder(
+                    builder: (context) {
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final isWeb = screenWidth > 600;
+                      final crossAxisCount = isWeb ? 4 : 2;
+                      final spacing = isWeb ? 16.0 : 8.0;
+                      
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: spacing,
+                          mainAxisSpacing: spacing,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final product = _filteredProducts[index];
+                            return _buildProductCard(product);
+                          },
+                          childCount: _filteredProducts.length,
+                        ),
+                      );
+                    },
                   ),
                 ),
             ],
