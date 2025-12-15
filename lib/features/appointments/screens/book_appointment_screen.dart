@@ -72,12 +72,21 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // TimeOfDay'i DateTime'a dönüştür
+      final appointmentDateTime = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+
       await Provider.of<AppointmentProvider>(context, listen: false).addAppointment(
         customerName: _nameController.text,
         customerPhone: _phoneController.text,
         customerEmail: _emailController.text.isNotEmpty ? _emailController.text : null,
         date: _selectedDate,
-        time: _selectedTime,
+        time: appointmentDateTime,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
 

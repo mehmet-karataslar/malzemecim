@@ -62,9 +62,9 @@ class MainNavigation extends StatelessWidget {
       case 4:
         return const NotesScreen();
       case 5:
-        return const SettingsScreen();
-      case 6:
         return const AppointmentsScreen();
+      case 6:
+        return const SettingsScreen();
       default:
         return const ScannerScreen();
     }
@@ -94,12 +94,12 @@ class MainNavigation extends StatelessWidget {
       ),
       const BottomNavigationBarItem(icon: Icon(Icons.note), label: 'Notlar'),
       const BottomNavigationBarItem(
-        icon: Icon(Icons.settings),
-        label: 'Ayarlar',
-      ),
-      const BottomNavigationBarItem(
         icon: Icon(Icons.calendar_today),
         label: 'Randevular',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.settings),
+        label: 'Ayarlar',
       ),
     ];
 
@@ -108,7 +108,7 @@ class MainNavigation extends StatelessWidget {
       items = [
         items[0], // Tara
         items[1], // Ürünler (sadece görüntüleme)
-        items[5], // Ayarlar
+        items[6], // Ayarlar
       ];
     }
 
@@ -127,7 +127,7 @@ class MainNavigation extends StatelessWidget {
               appProvider.setCurrentIndex(1);
               break;
             case 2: // Ayarlar
-              appProvider.setCurrentIndex(5);
+              appProvider.setCurrentIndex(6);
               break;
           }
         } else {
