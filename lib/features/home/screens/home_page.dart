@@ -447,9 +447,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    childAspectRatio: 0.65,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.85,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
                   ),
                   itemCount: _featuredProducts.length,
                   itemBuilder: (context, index) {
@@ -495,7 +495,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             children: [
               // Görsel Bölümü - Sabit yükseklik
               Container(
-                height: isWeb ? 200 : 180,
+                height: isWeb ? 140 : 180,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -510,18 +510,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(16),
                             ),
-                            child: CachedNetworkImage(
-                              imageUrl: product.imageUrls.first,
+                            child: Image.network(
+                              product.imageUrls.first,
                               fit: BoxFit.cover,
                               width: double.infinity,
                               height: double.infinity,
-                              placeholder: (context, url) => Container(
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded /
+                                              loadingProgress.expectedTotalBytes!
+                                          : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) => Container(
                                 color: Colors.grey[200],
                                 child: const Icon(
                                   Icons.image,
@@ -567,7 +575,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
               // Bilgi Bölümü
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(isWeb ? 8 : 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -576,12 +584,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 14 : 13,
+                        fontSize: isWeb ? 12 : 13,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: isWeb ? 4 : 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -592,14 +600,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: isWeb ? 18 : 16,
+                              fontSize: isWeb ? 14 : 16,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isWeb ? 4 : 6,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
@@ -610,7 +618,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             '${product.stock.toStringAsFixed(0)} ${product.unit}',
                             style: TextStyle(
                               color: AppTheme.primaryColor,
-                              fontSize: 10,
+                              fontSize: isWeb ? 9 : 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

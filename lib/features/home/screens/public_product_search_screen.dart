@@ -253,7 +253,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                       return SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: isWeb ? 0.85 : 0.75,
                           crossAxisSpacing: spacing,
                           mainAxisSpacing: spacing,
                         ),
@@ -296,16 +296,28 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: product.imageUrls.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: product.imageUrls.first,
+                    ? Image.network(
+                        product.imageUrls.first,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: Colors.grey[200],
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image_not_supported),
+                          child: const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
                         ),
                       )
                     : Container(
