@@ -9,7 +9,8 @@ import 'features/products/providers/product_provider.dart';
 import 'features/credit/providers/credit_provider.dart';
 import 'features/notes/providers/notes_provider.dart';
 import 'features/products/providers/sales_provider.dart';
-import 'features/auth/screens/login_screen.dart';
+import 'features/appointments/providers/appointment_provider.dart';
+import 'features/home/screens/home_page.dart';
 import 'shared/widgets/main_navigation.dart';
 
 void main() async {
@@ -37,6 +38,7 @@ class MalzemecimApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CreditProvider()),
         ChangeNotifierProvider(create: (_) => NotesProvider()),
         ChangeNotifierProvider(create: (_) => SalesProvider()),
+        ChangeNotifierProvider(create: (_) => AppointmentProvider()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -48,7 +50,7 @@ class MalzemecimApp extends StatelessWidget {
             if (authProvider.isAuthenticated) {
               return const MainNavigation();
             } else {
-              return const LoginScreen();
+              return const HomePage();
             }
           },
         ),

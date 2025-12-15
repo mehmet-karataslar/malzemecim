@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -246,17 +247,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             setState(() => _currentImageIndex = index);
           },
           itemBuilder: (context, index) {
-            return CachedNetworkImage(
-              imageUrl: product.imageUrls[index],
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: Colors.grey[200],
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, size: 60),
-              ),
+            return Container(
+              color: Colors.grey[100],
+              child: kIsWeb
+                  ? Image.network(
+                      product.imageUrls[index],
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.broken_image, size: 60),
+                      ),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: product.imageUrls[index],
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.broken_image, size: 60),
+                      ),
+                    ),
             );
           },
         ),
@@ -979,6 +999,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   void _showAddSaleDialog(BuildContext context) {
     final quantityController = TextEditingController(text: '1');
+    final priceController = TextEditingController(text: widget.product.price.toStringAsFixed(2));
 
     showDialog(
       context: context,
@@ -995,23 +1016,72 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: const Icon(Icons.shopping_cart, color: AppTheme.successColor),
             ),
             const SizedBox(width: 12),
-            const Text('Satış Ekle'),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Hızlı Satış', style: TextStyle(fontSize: 18)),
+                  Text(
+                    widget.product.name,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${widget.product.name} için satış kaydı oluştur'),
+            // Stok Bilgisi
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Mevcut Stok:'),
+                  Text(
+                    '${widget.product.stock.toStringAsFixed(0)} ${widget.product.unit}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
+
+            // Adet
             TextField(
               controller: quantityController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Satış Adedi',
                 suffixText: widget.product.unit,
+                prefixIcon: const Icon(Icons.numbers),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Fiyat
+            TextField(
+              controller: priceController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Satış Fiyatı (Opsiyonel)',
+                prefixText: '₺ ',
+                prefixIcon: const Icon(Icons.attach_money),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                helperText: 'Boş bırakılırsa normal fiyat kullanılır',
               ),
             ),
           ],
@@ -1021,21 +1091,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('İptal'),
           ),
-          ElevatedButton(
-            onPressed: () => _addSale(dialogContext, quantityController.text),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor),
-            child: const Text('Satışı Kaydet'),
+          ElevatedButton.icon(
+            onPressed: () => _addSale(dialogContext, quantityController.text, priceController.text),
+            icon: const Icon(Icons.check),
+            label: const Text('Satışı Onayla'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successColor,
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _addSale(BuildContext dialogContext, String quantityStr) async {
+  Future<void> _addSale(BuildContext dialogContext, String quantityStr, String priceStr) async {
     final quantity = double.tryParse(quantityStr);
     if (quantity == null || quantity <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçerli bir miktar girin')),
+        const SnackBar(
+          content: Text('Geçerli bir miktar girin'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (quantity > widget.product.stock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stok yetersiz!'),
+          backgroundColor: AppTheme.errorColor,
+        ),
       );
       return;
     }
@@ -1047,26 +1134,43 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       final salesProvider = context.read<SalesProvider>();
       final productProvider = context.read<ProductProvider>();
 
+      // Fiyat belirleme - boşsa normal fiyat
+      double salePrice = widget.product.price;
+      if (priceStr.isNotEmpty) {
+        final parsedPrice = double.tryParse(priceStr.replaceAll(',', '.'));
+        if (parsedPrice != null && parsedPrice > 0) {
+          salePrice = parsedPrice;
+        }
+      }
+
       // Satış kaydı oluştur
       await salesProvider.addSale(
         productId: widget.product.id,
         productName: widget.product.name,
         quantity: quantity,
-        unitPrice: widget.product.price,
+        unitPrice: salePrice,
         createdBy: authProvider.currentUser?.id ?? '',
         saleType: 'cash',
       );
 
       // Stok düşür
       final newStock = widget.product.stock - quantity;
-      if (newStock >= 0) {
-        await productProvider.updateStock(widget.product.id, newStock, 'Satış Kaydı');
-      }
+      await productProvider.updateStock(widget.product.id, newStock, 'Satış Kaydı');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Satış kaydedildi'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${quantity.toStringAsFixed(0)} ${widget.product.unit} satıldı! Toplam: ₺${(quantity * salePrice).toStringAsFixed(2)}',
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: AppTheme.successColor,
           ),
         );

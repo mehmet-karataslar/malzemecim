@@ -134,6 +134,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
+
+        const SizedBox(height: 16),
+
+        // Business Only Notice
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1e3a8a).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF1e3a8a).withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.business_center, color: Color(0xFF1e3a8a), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Bu kayıt sadece işletmeler içindir',
+                  style: TextStyle(
+                    color: const Color(0xFF1e3a8a),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

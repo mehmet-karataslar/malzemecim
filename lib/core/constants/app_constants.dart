@@ -14,6 +14,7 @@ class AppConstants {
   static const String creditCollection = 'credit';
   static const String reportsCollection = 'reports';
   static const String notesCollection = 'notes';
+  static const String appointmentsCollection = 'appointments';
 
   // User Roles
   static const String adminRole = 'admin';

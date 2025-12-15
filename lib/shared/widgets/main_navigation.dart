@@ -6,9 +6,9 @@ import '../../features/scanner/screens/scanner_screen.dart';
 import '../../features/products/screens/products_screen.dart';
 import '../../features/credit/screens/credit_screen.dart';
 import '../../features/reports/screens/reports_screen.dart';
-import '../../features/search/screens/search_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/notes/screens/notes_screen.dart';
+import '../../features/appointments/screens/appointments_screen.dart';
 
 class MainNavigation extends StatelessWidget {
   const MainNavigation({super.key});
@@ -60,11 +60,11 @@ class MainNavigation extends StatelessWidget {
       case 3:
         return const ReportsScreen();
       case 4:
-        return const SearchScreen();
-      case 5:
         return const NotesScreen();
-      case 6:
+      case 5:
         return const SettingsScreen();
+      case 6:
+        return const AppointmentsScreen();
       default:
         return const ScannerScreen();
     }
@@ -92,11 +92,14 @@ class MainNavigation extends StatelessWidget {
         icon: Icon(Icons.assessment),
         label: 'Raporlar',
       ),
-      const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Arama'),
       const BottomNavigationBarItem(icon: Icon(Icons.note), label: 'Notlar'),
       const BottomNavigationBarItem(
         icon: Icon(Icons.settings),
         label: 'Ayarlar',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.calendar_today),
+        label: 'Randevular',
       ),
     ];
 
@@ -105,8 +108,7 @@ class MainNavigation extends StatelessWidget {
       items = [
         items[0], // Tara
         items[1], // Ürünler (sadece görüntüleme)
-        items[4], // Arama
-        items[6], // Ayarlar
+        items[5], // Ayarlar
       ];
     }
 
@@ -124,11 +126,8 @@ class MainNavigation extends StatelessWidget {
             case 1: // Ürünler
               appProvider.setCurrentIndex(1);
               break;
-            case 2: // Arama
-              appProvider.setCurrentIndex(4);
-              break;
-            case 3: // Ayarlar
-              appProvider.setCurrentIndex(6);
+            case 2: // Ayarlar
+              appProvider.setCurrentIndex(5);
               break;
           }
         } else {

@@ -230,7 +230,7 @@ class ProductProvider with ChangeNotifier {
         'lastUpdated': FieldValue.serverTimestamp(),
         'movements': FieldValue.arrayUnion([
           {
-            'date': FieldValue.serverTimestamp(),
+            'date': Timestamp.now(),
             'type': 'manual_update',
             'quantity': newStock,
             'reason': reason,

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/models/credit_model.dart';
+import '../../../shared/models/sales_model.dart';
 import '../../products/providers/product_provider.dart';
+import '../../products/providers/sales_provider.dart';
 import '../../credit/providers/credit_provider.dart';
 
 // Helper to create a color with opacity without using deprecated getters
@@ -27,6 +30,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductProvider>().loadProducts();
       context.read<CreditProvider>().loadCredits();
+      context.read<SalesProvider>().loadAllSales();
     });
   }
 
@@ -68,6 +72,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
               'color': AppTheme.primaryColor,
               'subtitle': _getCurrentMonth(),
               'onTap': () => _showMonthlySummary(context, productProvider, creditProvider),
+            },
+            {
+              'title': 'Satış Geçmişi',
+              'icon': Icons.receipt_long,
+              'color': const Color(0xFF8B5CF6),
+              'subtitle': 'Detaylı ürün çıkışı',
+              'onTap': () => _showSalesHistory(context),
             },
           ];
 
@@ -632,6 +643,349 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showSalesHistory(BuildContext context) {
+    final salesProvider = context.read<SalesProvider>();
+    final productProvider = context.read<ProductProvider>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.receipt_long, color: Color(0xFF8B5CF6)),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Satış Geçmişi',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Tüm ürün çıkışları',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+
+              // Summary Cards
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildMiniSummaryCard(
+                        'Toplam Satış',
+                        '${salesProvider.sales.length}',
+                        Icons.shopping_cart,
+                        const Color(0xFF10B981),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMiniSummaryCard(
+                        'Toplam Tutar',
+                        '₺${salesProvider.totalSalesAmount.toStringAsFixed(2)}',
+                        Icons.attach_money,
+                        const Color(0xFFF59E0B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Sales List
+              Expanded(
+                child: salesProvider.sales.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.receipt_long, size: 64, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Henüz satış kaydı yok',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: salesProvider.sales.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final sale = salesProvider.sales[index];
+                          // Ürün barkodunu bul
+                          final product = productProvider.products.firstWhere(
+                            (p) => p.id == sale.productId,
+                            orElse: () => ProductModel(
+                              id: '',
+                              name: sale.productName,
+                              price: sale.unitPrice,
+                              stock: 0,
+                              minStock: 0,
+                              unit: 'Adet',
+                              category: '',
+                              barcode: '',
+                              sku: '',
+                              brand: '',
+                              description: '',
+                              imageUrls: [],
+                              isActive: true,
+                              createdAt: DateTime.now(),
+                              updatedAt: DateTime.now(),
+                              createdBy: '',
+                            ),
+                          );
+                          return _buildSaleCard(sale, product.barcode);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniSummaryCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaleCard(SalesModel sale, String barcode) {
+    final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+    
+    Color saleTypeColor;
+    String saleTypeText;
+    IconData saleTypeIcon;
+    
+    switch (sale.saleType) {
+      case 'credit':
+        saleTypeColor = AppTheme.warningColor;
+        saleTypeText = 'Veresiye';
+        saleTypeIcon = Icons.credit_card;
+        break;
+      case 'card':
+        saleTypeColor = AppTheme.primaryColor;
+        saleTypeText = 'Kart';
+        saleTypeIcon = Icons.payment;
+        break;
+      default:
+        saleTypeColor = AppTheme.successColor;
+        saleTypeText = 'Nakit';
+        saleTypeIcon = Icons.payments;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ürün Adı ve Tarih
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sale.productName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Text(
+                          dateFormat.format(sale.saleDate),
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: saleTypeColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(saleTypeIcon, size: 14, color: saleTypeColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      saleTypeText,
+                      style: TextStyle(
+                        color: saleTypeColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Barkod
+          if (barcode.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.qr_code, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    barcode,
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Detaylar
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildSaleDetail('Miktar', '${sale.quantity.toStringAsFixed(0)}'),
+                Container(width: 1, height: 30, color: Colors.grey[300]),
+                _buildSaleDetail('Birim Fiyat', '₺${sale.unitPrice.toStringAsFixed(2)}'),
+                Container(width: 1, height: 30, color: Colors.grey[300]),
+                _buildSaleDetail('Toplam', '₺${sale.totalPrice.toStringAsFixed(2)}', isHighlight: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaleDetail(String label, String value, {bool isHighlight = false}) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: Colors.grey[600], fontSize: 11),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: isHighlight ? 16 : 14,
+            color: isHighlight ? AppTheme.successColor : Colors.black,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -3,11 +3,10 @@ rules_version = '2';
 // Firebase Storage Security Rules için Malzemecim
 service firebase.storage {
   match /b/{bucket}/o {
-    // Ürün resimleri
-    match /products/{productId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Ürün resimleri - giriş yapmış tüm kullanıcılar yükleyebilir
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     
     // Profil resimleri
@@ -16,21 +15,26 @@ service firebase.storage {
     }
     
     // Raporlar ve dışa aktarılan dosyalar
-    match /reports/{reportId}/{allPaths=**} {
+    match /reports/{allPaths=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null;
     }
     
     // Yedekleme dosyaları (sadece admin)
     match /backups/{allPaths=**} {
-      allow read, write: if request.auth != null && 
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read, write: if request.auth != null;
     }
     
-    // Varsayılan: Erişimi reddet
+    // Genel görsel klasörü
+    match /images/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Varsayılan: Giriş yapmış kullanıcılar okuyabilir
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

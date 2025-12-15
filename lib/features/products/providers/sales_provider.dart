@@ -177,6 +177,80 @@ class SalesProvider with ChangeNotifier {
     };
   }
 
+  // Tüm satışları yükle
+  Future<void> loadAllSales() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final snapshot = await _firestore
+          .collection('sales')
+          .orderBy('saleDate', descending: true)
+          .get();
+
+      _sales = snapshot.docs
+          .map((doc) => SalesModel.fromFirestore(doc))
+          .toList();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Satışlar yüklenirken hata: $e';
+      print('Error loading sales: $e');
+      notifyListeners();
+    }
+  }
+
+  // Son N satışı getir
+  Future<List<SalesModel>> getRecentSales({int limit = 50}) async {
+    try {
+      final snapshot = await _firestore
+          .collection('sales')
+          .orderBy('saleDate', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => SalesModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('Error getting recent sales: $e');
+      return [];
+    }
+  }
+
+  // Bugünkü satışları getir
+  Future<List<SalesModel>> getTodaySales() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    
+    try {
+      final snapshot = await _firestore
+          .collection('sales')
+          .where('saleDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .orderBy('saleDate', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => SalesModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('Error getting today sales: $e');
+      return [];
+    }
+  }
+
+  // Toplam satış tutarı
+  double get totalSalesAmount {
+    return _sales.fold(0, (sum, sale) => sum + sale.totalPrice);
+  }
+
+  // Toplam satış adedi
+  double get totalSalesQuantity {
+    return _sales.fold(0, (sum, sale) => sum + sale.quantity);
+  }
+
   // Hata mesajını temizle
   void clearError() {
     _errorMessage = null;

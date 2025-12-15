@@ -211,22 +211,35 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildRegisterLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        Text('Hesabınız yok mu? ', style: TextStyle(color: Colors.grey[600])),
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-            );
-          },
-          child: const Text(
-            'Kayıt Ol',
-            style: TextStyle(
-              color: Color(0xFF1e3a8a),
-              fontWeight: FontWeight.w600,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('İşletme misiniz? ', style: TextStyle(color: Colors.grey[600])),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                );
+              },
+              child: const Text(
+                'İşletme Kaydı',
+                style: TextStyle(
+                  color: Color(0xFF1e3a8a),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Normal kullanıcılar için kayıt gerekmez',
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
           ),
         ),
       ],
