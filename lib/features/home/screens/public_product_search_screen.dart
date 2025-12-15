@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../shared/models/product_model.dart';
 import '../../../features/products/providers/product_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -265,30 +266,50 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: product.imageUrls.isNotEmpty
-                    ? Image.network(
-                        product.imageUrls.first,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            color: Colors.grey[200],
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
+                    ? (kIsWeb
+                        ? Image.network(
+                            product.imageUrls.first,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              debugPrint('Image error: $error');
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              );
+                            },
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: product.imageUrls.first,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
                               ),
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                        ),
-                      )
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                            ),
+                          ))
                     : Container(
                         color: Colors.grey[200],
                         child: const Icon(Icons.image, size: 40, color: Colors.grey),
