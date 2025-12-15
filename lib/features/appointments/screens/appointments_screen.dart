@@ -1,332 +1,421 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../../shared/providers/auth_provider.dart';
-import '../../../shared/models/appointment_model.dart';
-import '../../../core/theme/app_theme.dart';
 import '../providers/appointment_provider.dart';
+import '../../../../shared/models/appointment_model.dart';
+import 'book_appointment_screen.dart';
 
 class AppointmentsScreen extends StatefulWidget {
-  const AppointmentsScreen({super.key});
+  const AppointmentsScreen({Key? key}) : super(key: key);
 
   @override
   State<AppointmentsScreen> createState() => _AppointmentsScreenState();
 }
 
-class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
+class _AppointmentsScreenState extends State<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // İlk açılışta verileri dinlemeye başla
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticated && authProvider.currentUser != null) {
-        Provider.of<AppointmentProvider>(context, listen: false)
-            .loadBusinessAppointments(authProvider.currentUser!.id);
-      }
+      Provider.of<AppointmentProvider>(context, listen: false).listenToAppointments();
     });
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppointmentProvider>(context);
+    final selectedDate = provider.selectedDate;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Randevular'),
-        backgroundColor: AppTheme.primaryColor,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Bekleyen', icon: Icon(Icons.pending)),
-            Tab(text: 'Onaylanan', icon: Icon(Icons.check_circle)),
-            Tab(text: 'Tamamlanan', icon: Icon(Icons.done_all)),
-          ],
-        ),
+      backgroundColor: Colors.grey[50],
+      body: Column(
+        children: [
+          // 1. Yatay Tarih Seçici (Header)
+          _buildDateHeader(context, provider),
+          
+          // 2. Randevu Listesi
+          Expanded(
+            child: provider.isLoading && provider.appointments.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _buildAppointmentList(provider),
+          ),
+        ],
       ),
-      body: Consumer2<AppointmentProvider, AuthProvider>(
-        builder: (context, appointmentProvider, authProvider, child) {
-          if (appointmentProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (appointmentProvider.errorMessage != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    appointmentProvider.errorMessage!,
-                    style: TextStyle(color: Colors.red[700]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildAppointmentsList(
-                appointmentProvider.getPendingAppointments(),
-                'pending',
-                appointmentProvider,
-              ),
-              _buildAppointmentsList(
-                appointmentProvider.getConfirmedAppointments(),
-                'confirmed',
-                appointmentProvider,
-              ),
-              _buildAppointmentsList(
-                appointmentProvider.getCompletedAppointments(),
-                'completed',
-                appointmentProvider,
-              ),
-            ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BookAppointmentScreen()),
           );
         },
+        label: const Text('Yeni Randevu'),
+        icon: const Icon(Icons.add),
+        backgroundColor: Theme.of(context).primaryColor,
       ),
     );
   }
 
-  Widget _buildAppointmentsList(
-    List<AppointmentModel> appointments,
-    String status,
-    AppointmentProvider appointmentProvider,
-  ) {
-    if (appointments.isEmpty) {
+  Widget _buildDateHeader(BuildContext context, AppointmentProvider provider) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              DateFormat('MMMM yyyy', 'tr_TR').format(provider.selectedDate),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 80,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: 30, // 30 günlük takvim
+              itemBuilder: (context, index) {
+                final date = today.add(Duration(days: index - 2)); // 2 gün önceden başla
+                final isSelected = date.year == provider.selectedDate.year &&
+                                 date.month == provider.selectedDate.month &&
+                                 date.day == provider.selectedDate.day;
+                final isToday = date.year == today.year &&
+                              date.month == today.month &&
+                              date.day == today.day;
+
+                return GestureDetector(
+                  onTap: () => provider.selectDate(date),
+                  child: Container(
+                    width: 60,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Theme.of(context).primaryColor : (isToday ? Colors.blue[50] : Colors.white),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? Theme.of(context).primaryColor : (isToday ? Colors.blue.withOpacity(0.3) : Colors.grey[300]!),
+                        width: isSelected || isToday ? 2 : 1,
+                      ),
+                      boxShadow: isSelected ? [
+                        BoxShadow(
+                          color: Theme.of(context).primaryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        )
+                      ] : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('E', 'tr_TR').format(date), // Gün adı (Pzt, Sal)
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected ? Colors.white : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          date.day.toString(),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppointmentList(AppointmentProvider provider) {
+    final dailyAppointments = provider.getAppointmentsForDate(provider.selectedDate);
+
+    if (dailyAppointments.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
+            Icon(Icons.event_available, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
             Text(
-              'Randevu bulunmamaktadır',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              'Bugün için randevu yok',
+              style: TextStyle(fontSize: 16, color: Colors.grey[500]),
             ),
           ],
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        if (authProvider.currentUser != null) {
-          await appointmentProvider.loadBusinessAppointments(authProvider.currentUser!.id);
-        }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: dailyAppointments.length,
+      itemBuilder: (context, index) {
+        final appointment = dailyAppointments[index];
+        return _buildAppointmentCard(context, appointment, provider);
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(8),
-        itemCount: appointments.length,
-        itemBuilder: (context, index) {
-          final appointment = appointments[index];
-          return _buildAppointmentCard(appointment, appointmentProvider);
-        },
-      ),
     );
   }
 
-  Widget _buildAppointmentCard(
-    AppointmentModel appointment,
-    AppointmentProvider appointmentProvider,
-  ) {
-    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    final isPast = appointment.appointmentDate.isBefore(DateTime.now());
+  Widget _buildAppointmentCard(BuildContext context, AppointmentModel appointment, AppointmentProvider provider) {
+    // Rastgele renk veya duruma göre renk seçimi
+    Color cardColor;
+    Color textColor;
+    
+    switch (appointment.status) {
+      case 'confirmed':
+        cardColor = const Color(0xFFE3F2FD); // Light Blue
+        textColor = const Color(0xFF1565C0);
+        break;
+      case 'completed':
+        cardColor = const Color(0xFFE8F5E9); // Light Green
+        textColor = const Color(0xFF2E7D32);
+        break;
+      case 'cancelled':
+        cardColor = const Color(0xFFFFEBEE); // Light Red
+        textColor = const Color(0xFFC62828);
+        break;
+      default:
+        cardColor = Colors.white;
+        textColor = Colors.black87;
+    }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ExpansionTile(
-        leading: _buildStatusIcon(appointment.status),
-        title: Text(
-          appointment.customerName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+    return Dismissible(
+      key: Key(appointment.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Randevuyu Sil?'),
+            content: const Text('Bu işlem geri alınamaz.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil', style: TextStyle(color: Colors.red))),
+            ],
+          ),
+        );
+      },
+      onDismissed: (_) {
+        provider.deleteAppointment(appointment.id);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Randevu silindi')));
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cardColor == Colors.white ? Colors.grey[200]! : Colors.transparent),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('📅 ${dateFormat.format(appointment.appointmentDate)}'),
-            Text('📞 ${appointment.customerPhone}'),
-            if (appointment.customerEmail != null)
-              Text('📧 ${appointment.customerEmail}'),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (appointment.notes != null && appointment.notes!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      'Notlar: ${appointment.notes}',
-                      style: TextStyle(color: Colors.grey[700]),
+        color: cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                            )
+                          ]
+                        ),
+                        child: Icon(Icons.access_time, color: textColor, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        DateFormat('HH:mm').format(appointment.appointmentDate),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildStatusChip(appointment.status),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appointment.customerName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.phone, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              appointment.customerPhone,
+                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                        if (appointment.notes != null && appointment.notes!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              appointment.notes!,
+                              style: TextStyle(fontSize: 13, color: Colors.grey[700], fontStyle: FontStyle.italic),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (appointment.isPending) ...[
-                      ElevatedButton.icon(
-                        onPressed: () => _updateStatus(
-                          appointment.id,
-                          'confirmed',
-                          appointmentProvider,
-                        ),
-                        icon: const Icon(Icons.check, size: 18),
-                        label: const Text('Onayla'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () => _updateStatus(
-                          appointment.id,
-                          'cancelled',
-                          appointmentProvider,
-                        ),
-                        icon: const Icon(Icons.cancel, size: 18),
-                        label: const Text('İptal Et'),
-                      ),
-                    ],
-                    if (appointment.isConfirmed && !isPast) ...[
-                      ElevatedButton.icon(
-                        onPressed: () => _updateStatus(
-                          appointment.id,
-                          'completed',
-                          appointmentProvider,
-                        ),
-                        icon: const Icon(Icons.done, size: 18),
-                        label: const Text('Tamamla'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                        ),
-                      ),
-                    ],
-                    if (appointment.isPending || appointment.isConfirmed)
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteAppointment(
-                          appointment.id,
-                          appointmentProvider,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusIcon(String status) {
-    switch (status) {
-      case 'pending':
-        return const Icon(Icons.pending, color: Colors.orange);
-      case 'confirmed':
-        return const Icon(Icons.check_circle, color: Colors.green);
-      case 'cancelled':
-        return const Icon(Icons.cancel, color: Colors.red);
-      case 'completed':
-        return const Icon(Icons.done_all, color: Colors.blue);
-      default:
-        return const Icon(Icons.event);
-    }
-  }
-
-  Future<void> _updateStatus(
-    String appointmentId,
-    String newStatus,
-    AppointmentProvider appointmentProvider,
-  ) async {
-    final success = await appointmentProvider.updateAppointmentStatus(
-      appointmentId,
-      newStatus,
-    );
-
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Randevu durumu güncellendi'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              appointmentProvider.errorMessage ?? 'Güncelleme başarısız',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _deleteAppointment(
-    String appointmentId,
-    AppointmentProvider appointmentProvider,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Randevuyu Sil'),
-        content: const Text('Bu randevuyu silmek istediğinize emin misiniz?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sil', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final success = await appointmentProvider.deleteAppointment(appointmentId);
-
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Randevu silindi'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                appointmentProvider.errorMessage ?? 'Silme başarısız',
+                  IconButton(
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: () => _showStatusMenu(context, provider, appointment),
+                  ),
+                ],
               ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    String label;
+    Color color;
+    
+    switch (status) {
+      case 'confirmed':
+        label = 'Onaylı';
+        color = Colors.blue;
+        break;
+      case 'completed':
+        label = 'Tamamlandı';
+        color = Colors.green;
+        break;
+      case 'cancelled':
+        label = 'İptal';
+        color = Colors.red;
+        break;
+      default:
+        label = 'Bekliyor';
+        color = Colors.orange;
     }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStatusMenu(BuildContext context, AppointmentProvider provider, AppointmentModel appointment) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.check_circle, color: Colors.green),
+            title: const Text('Tamamlandı Olarak İşaretle'),
+            onTap: () {
+              provider.updateStatus(appointment.id, 'completed');
+              Navigator.pop(ctx);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.cancel, color: Colors.red),
+            title: const Text('İptal Et'),
+            onTap: () {
+              provider.updateStatus(appointment.id, 'cancelled');
+              Navigator.pop(ctx);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.refresh, color: Colors.orange),
+            title: const Text('Beklemeye Al'),
+            onTap: () {
+              provider.updateStatus(appointment.id, 'pending');
+              Navigator.pop(ctx);
+            },
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
   }
 }
-

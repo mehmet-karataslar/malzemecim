@@ -263,8 +263,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
-      if (success) {
-        // Navigation ana uygulama tarafından otomatik olarak hallediliyor
+      if (success && mounted) {
+        // Tüm navigasyon stack'ini temizle
+        // main.dart'taki Consumer otomatik olarak MainNavigation'a yönlendirecek
+        Navigator.of(context).pop();
       }
     }
   }

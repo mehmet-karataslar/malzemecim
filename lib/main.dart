@@ -3,13 +3,14 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/firebase_service.dart';
+import 'features/appointments/providers/appointment_provider.dart';
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/app_provider.dart';
 import 'features/products/providers/product_provider.dart';
 import 'features/credit/providers/credit_provider.dart';
 import 'features/notes/providers/notes_provider.dart';
 import 'features/products/providers/sales_provider.dart';
-import 'features/appointments/providers/appointment_provider.dart';
+
 import 'features/home/screens/home_page.dart';
 import 'shared/widgets/main_navigation.dart';
 

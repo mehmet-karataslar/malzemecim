@@ -365,17 +365,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         businessName: _businessNameController.text.trim(),
       );
 
-      if (success) {
-        // Kayıt başarılı, ana sayfaya yönlendir
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const Scaffold(
-                body: Center(child: Text('Kayıt başarılı! Hoş geldiniz.')),
-              ),
-            ),
-          );
-        }
+      if (success && mounted) {
+        // Kayıt başarılı, login ekranına dön
+        // main.dart'taki Consumer otomatik olarak MainNavigation'a yönlendirecek
+        Navigator.of(context).pop();
       }
     }
   }
