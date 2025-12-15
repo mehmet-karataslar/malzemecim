@@ -2,49 +2,62 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper fonksiyonu - Kullanıcının admin olup olmadığını kontrol et
+    function isAdmin() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper fonksiyonu - Giriş yapmış kullanıcı mı
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
     // Kullanıcılar - kendi bilgilerini yönetebilir + admin oluşturma izni
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow create: if request.auth != null;  // Kullanıcı oluşturma izni
-      allow read: if request.auth != null && resource.data.email == request.auth.token.email;  // Email ile okuma
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
     }
     
     // Ürünler - admin tam yetki, çalışan sadece okuma
     match /products/{productId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Envanter - admin tam yetki, çalışan sadece okuma
     match /inventory/{inventoryId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Veresiye - admin tam yetki, çalışan sadece okuma
     match /credit/{creditId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Raporlar - admin tam yetki, çalışan sadece okuma
     match /reports/{reportId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
-    // Notlar - herkes kendi notlarını yönetebilir
+    // Notlar - giriş yapmış tüm kullanıcılar okuyabilir ve yazabilir
+    // (İşletme içi notlar - herkes görebilir)
     match /notes/{noteId} {
-      allow read, write: if request.auth != null && 
-        resource.data.createdBy == request.auth.uid;
-      allow create: if request.auth != null && 
-        request.resource.data.createdBy == request.auth.uid;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Satışlar - admin yazabilir, herkes okuyabilir
+    match /sales/{saleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
     
     // Varsayılan: Erişimi reddet

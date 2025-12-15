@@ -6,6 +6,9 @@ import 'core/services/firebase_service.dart';
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/app_provider.dart';
 import 'features/products/providers/product_provider.dart';
+import 'features/credit/providers/credit_provider.dart';
+import 'features/notes/providers/notes_provider.dart';
+import 'features/products/providers/sales_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shared/widgets/main_navigation.dart';
 
@@ -31,6 +34,9 @@ class MalzemecimApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AppProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => CreditProvider()),
+        ChangeNotifierProvider(create: (_) => NotesProvider()),
+        ChangeNotifierProvider(create: (_) => SalesProvider()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
