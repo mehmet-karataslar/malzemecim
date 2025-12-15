@@ -613,165 +613,377 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final businessNameController = TextEditingController(text: user.businessName ?? '');
     final phoneController = TextEditingController(text: user.phone ?? '');
     final emailController = TextEditingController(text: user.email);
+    final newEmailController = TextEditingController();
     final passwordController = TextEditingController();
     bool isLoading = false;
     bool showEmailChange = false;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      isDismissible: !isLoading,
+      enableDrag: !isLoading,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Profili Düzenle'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  enabled: !isLoading,
-                  decoration: const InputDecoration(
-                    labelText: 'Ad Soyad',
-                    prefixIcon: Icon(Icons.person),
+        builder: (context, setDialogState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Başlık
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Profili Düzenle',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: businessNameController,
-                  enabled: !isLoading,
-                  decoration: const InputDecoration(
-                    labelText: 'İşletme Adı',
-                    prefixIcon: Icon(Icons.business),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: isLoading
+                        ? null
+                        : () => Navigator.pop(dialogContext),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: phoneController,
-                  enabled: !isLoading,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Telefon Numarası',
-                    prefixIcon: Icon(Icons.phone),
-                    hintText: '05XX XXX XX XX',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: emailController,
-                        enabled: false,
+                ],
+              ),
+              const SizedBox(height: 24),
+              
+              // Form Alanları
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        enabled: !isLoading,
                         decoration: const InputDecoration(
-                          labelText: 'E-posta',
-                          prefixIcon: Icon(Icons.email),
+                          labelText: 'Ad Soyad',
+                          prefixIcon: Icon(Icons.person),
+                          border: OutlineInputBorder(),
+                          filled: true,
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: businessNameController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: 'İşletme Adı',
+                          prefixIcon: Icon(Icons.business),
+                          border: OutlineInputBorder(),
+                          filled: true,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: phoneController,
+                        enabled: !isLoading,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Telefon Numarası',
+                          prefixIcon: Icon(Icons.phone),
+                          hintText: '05XX XXX XX XX',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // E-posta Bölümü
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: showEmailChange
+                                ? AppTheme.primaryColor
+                                : Colors.grey[300]!,
+                            width: showEmailChange ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.email,
+                                  color: showEmailChange
+                                      ? AppTheme.primaryColor
+                                      : Colors.grey[600],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'E-posta Adresi',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: showEmailChange
+                                        ? AppTheme.primaryColor
+                                        : Colors.grey[800],
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (!showEmailChange)
+                                  TextButton.icon(
+                                    onPressed: isLoading
+                                        ? null
+                                        : () {
+                                            setDialogState(() {
+                                              showEmailChange = true;
+                                              newEmailController.text = user.email;
+                                            });
+                                          },
+                                    icon: const Icon(Icons.edit, size: 18),
+                                    label: const Text('Değiştir'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Mevcut E-posta:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user.email,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (showEmailChange) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline,
+                                      color: AppTheme.primaryColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'E-posta değiştirmek için mevcut şifrenizi girmeniz gerekiyor.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.primaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: newEmailController,
+                                enabled: !isLoading,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                  labelText: 'Yeni E-posta',
+                                  prefixIcon: const Icon(Icons.email_outlined),
+                                  border: const OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  helperText: 'Yeni e-posta adresinizi girin',
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: passwordController,
+                                enabled: !isLoading,
+                                obscureText: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'Mevcut Şifre',
+                                  prefixIcon: Icon(Icons.lock_outline),
+                                  border: OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  helperText: 'E-posta değiştirmek için şifrenizi girin',
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: isLoading
+                                    ? null
+                                    : () {
+                                        setDialogState(() {
+                                          showEmailChange = false;
+                                          newEmailController.clear();
+                                          passwordController.clear();
+                                        });
+                                      },
+                                child: const Text('İptal'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (isLoading) ...[
+                        const SizedBox(height: 24),
+                        const Center(child: CircularProgressIndicator()),
+                      ],
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Butonlar
+              SafeArea(
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                setDialogState(() => isLoading = true);
+
+                                // E-posta değişikliği varsa
+                                if (showEmailChange &&
+                                    newEmailController.text.isNotEmpty &&
+                                    newEmailController.text != user.email) {
+                                  if (passwordController.text.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('E-posta değiştirmek için şifre gerekli'),
+                                        backgroundColor: AppTheme.errorColor,
+                                      ),
+                                    );
+                                    setDialogState(() => isLoading = false);
+                                    return;
+                                  }
+
+                                  if (newEmailController.text == user.email) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Yeni e-posta mevcut e-posta ile aynı olamaz'),
+                                        backgroundColor: AppTheme.errorColor,
+                                      ),
+                                    );
+                                    setDialogState(() => isLoading = false);
+                                    return;
+                                  }
+
+                                  final emailSuccess = await authProvider.updateEmail(
+                                    newEmail: newEmailController.text.trim(),
+                                    password: passwordController.text,
+                                  );
+
+                                  if (!emailSuccess) {
+                                    setDialogState(() => isLoading = false);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(authProvider.errorMessage ??
+                                            'E-posta güncellenirken hata oluştu'),
+                                        backgroundColor: AppTheme.errorColor,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                }
+
+                                // Profil bilgilerini güncelle
+                                final profileSuccess = await authProvider.updateProfile(
+                                  name: nameController.text.trim(),
+                                  businessName: businessNameController.text.trim().isEmpty
+                                      ? null
+                                      : businessNameController.text.trim(),
+                                  phone: phoneController.text.trim().isEmpty
+                                      ? null
+                                      : phoneController.text.trim(),
+                                );
+
+                                setDialogState(() => isLoading = false);
+
+                                if (profileSuccess) {
+                                  Navigator.pop(dialogContext);
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(showEmailChange &&
+                                              newEmailController.text.isNotEmpty
+                                          ? 'Profil ve e-posta başarıyla güncellendi. Yeni e-posta ile giriş yapabilirsiniz.'
+                                          : 'Profil başarıyla güncellendi'),
+                                      backgroundColor: AppTheme.successColor,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(authProvider.errorMessage ??
+                                          'Profil güncellenirken hata oluştu'),
+                                      backgroundColor: AppTheme.errorColor,
+                                    ),
+                                  );
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Kaydet',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              setDialogState(() => showEmailChange = !showEmailChange);
-                            },
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: isLoading
+                            ? null
+                            : () => Navigator.pop(dialogContext),
+                        child: const Text('İptal'),
+                      ),
                     ),
                   ],
                 ),
-                if (showEmailChange) ...[
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: passwordController,
-                    enabled: !isLoading,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Mevcut Şifre (E-posta değiştirmek için)',
-                      prefixIcon: Icon(Icons.lock),
-                    ),
-                  ),
-                ],
-                if (isLoading) ...[
-                  const SizedBox(height: 16),
-                  const Center(child: CircularProgressIndicator()),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: isLoading
-                  ? null
-                  : () => Navigator.pop(dialogContext),
-              child: const Text('İptal'),
-            ),
-            ElevatedButton(
-              onPressed: isLoading
-                  ? null
-                  : () async {
-                      setDialogState(() => isLoading = true);
-
-                      // E-posta değişikliği varsa
-                      if (showEmailChange && emailController.text != user.email) {
-                        if (passwordController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('E-posta değiştirmek için şifre gerekli'),
-                              backgroundColor: AppTheme.errorColor,
-                            ),
-                          );
-                          setDialogState(() => isLoading = false);
-                          return;
-                        }
-
-                        final emailSuccess = await authProvider.updateEmail(
-                          newEmail: emailController.text,
-                          password: passwordController.text,
-                        );
-
-                        if (!emailSuccess) {
-                          setDialogState(() => isLoading = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(authProvider.errorMessage ?? 'E-posta güncellenirken hata oluştu'),
-                              backgroundColor: AppTheme.errorColor,
-                            ),
-                          );
-                          return;
-                        }
-                      }
-
-                      // Profil bilgilerini güncelle
-                      final profileSuccess = await authProvider.updateProfile(
-                        name: nameController.text.trim(),
-                        businessName: businessNameController.text.trim().isEmpty
-                            ? null
-                            : businessNameController.text.trim(),
-                        phone: phoneController.text.trim().isEmpty
-                            ? null
-                            : phoneController.text.trim(),
-                      );
-
-                      setDialogState(() => isLoading = false);
-
-                      if (profileSuccess) {
-                        Navigator.pop(dialogContext);
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profil başarıyla güncellendi'),
-                            backgroundColor: AppTheme.successColor,
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(authProvider.errorMessage ?? 'Profil güncellenirken hata oluştu'),
-                            backgroundColor: AppTheme.errorColor,
-                          ),
-                        );
-                      }
-                    },
-              child: const Text('Kaydet'),
-            ),
-          ],
         ),
       ),
     );

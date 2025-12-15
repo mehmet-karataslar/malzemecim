@@ -249,8 +249,13 @@ class AuthProvider extends ChangeNotifier {
       );
       await user.reauthenticateWithCredential(credential);
 
-      // E-postayı güncelle
-      await user.verifyBeforeUpdateEmail(newEmail);
+      // E-postayı direkt güncelle (doğrulama gerektirmeden)
+      try {
+        await user.updateEmail(newEmail);
+      } catch (e) {
+        // Eğer direkt güncelleme çalışmazsa, doğrulama e-postası gönder
+        await user.verifyBeforeUpdateEmail(newEmail);
+      }
 
       // Firestore'da e-postayı güncelle
       await _firestore.collection(AppConstants.usersCollection).doc(user.uid).update({
