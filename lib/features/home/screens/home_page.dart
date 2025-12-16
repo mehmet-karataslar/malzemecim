@@ -509,7 +509,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             children: [
               // Görsel Bölümü - Sabit yükseklik
               Container(
-                height: isWeb ? 200 : 140,
+                height: isWeb ? 240 : 160,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -627,14 +627,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 13 : 12,
+                        fontSize: isWeb ? 14 : 13,
                         color: Colors.grey[900],
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: isWeb ? 2 : 3),
-                    const Spacer(),
+                    SizedBox(height: isWeb ? 4 : 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -645,15 +644,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: isWeb ? 13 : 14,
+                              fontSize: isWeb ? 14 : 15,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: isWeb ? 4 : 5,
-                            vertical: 2,
+                            horizontal: isWeb ? 5 : 6,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),
@@ -663,7 +662,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             '${product.stock.toStringAsFixed(0)} ${product.unit}',
                             style: TextStyle(
                               color: AppTheme.primaryColor,
-                              fontSize: isWeb ? 9 : 9,
+                              fontSize: isWeb ? 10 : 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

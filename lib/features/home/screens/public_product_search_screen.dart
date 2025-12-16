@@ -260,7 +260,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
           children: [
             // Product Image - Fixed height
             Container(
-              height: isWeb ? 200 : 140,
+              height: isWeb ? 240 : 160,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -335,30 +335,57 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 13 : 12,
+                        fontSize: isWeb ? 14 : 13,
                         color: Colors.grey[900],
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: isWeb ? 2 : 3),
+                    SizedBox(height: isWeb ? 4 : 4),
                     Text(
                       product.brand,
                       style: TextStyle(
-                        fontSize: isWeb ? 10 : 10,
+                        fontSize: isWeb ? 11 : 11,
                         color: Colors.grey[600],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
-                    Text(
-                      '${product.price.toStringAsFixed(2)} ₺',
-                      style: TextStyle(
-                        fontSize: isWeb ? 13 : 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
+                    SizedBox(height: isWeb ? 4 : 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${product.price.toStringAsFixed(2)} ₺',
+                            style: TextStyle(
+                              fontSize: isWeb ? 14 : 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isWeb ? 5 : 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${product.stock.toStringAsFixed(0)} ${product.unit}',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: isWeb ? 10 : 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

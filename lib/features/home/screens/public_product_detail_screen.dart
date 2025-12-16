@@ -59,6 +59,13 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
     }
   }
 
+  Future<void> _launchPhone(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: kIsWeb ? LaunchMode.externalApplication : LaunchMode.platformDefault);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
@@ -501,6 +508,19 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
               color: Colors.blue,
             ),
           ),
+          // Telefon
+          if (business.phone != null && business.phone!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => _launchPhone(business.phone!),
+              child: _buildContactRow(
+                icon: Icons.phone,
+                label: 'Telefon',
+                value: business.phone!,
+                color: Colors.green,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           // İletişim butonları
           Row(
@@ -517,6 +537,21 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
                   ),
                 ),
               ),
+              if (business.phone != null && business.phone!.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _launchPhone(business.phone!),
+                    icon: const Icon(Icons.phone, size: 18),
+                    label: const Text('Ara'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ],
