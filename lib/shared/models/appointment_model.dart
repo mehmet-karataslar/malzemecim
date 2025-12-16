@@ -82,3 +82,4 @@ class AppointmentModel {
   bool get isCompleted => status == 'completed';
 }
 
+
