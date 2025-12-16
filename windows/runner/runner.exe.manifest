@@ -12,6 +12,17 @@
       />
     </dependentAssembly>
   </dependency>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+        type="win32"
+        name="Microsoft.VC++.CRT"
+        version="14.40.33807.0"
+        processorArchitecture="amd64"
+        publicKeyToken="1fc8b3b9a1e18e3b"
+      />
+    </dependentAssembly>
+  </dependency>
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>

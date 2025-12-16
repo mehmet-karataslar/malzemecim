@@ -11,6 +11,7 @@
 1. **ZIP dosyasını indirin ve açın**
    - `malzemecim-windows-v1.0.0.zip` dosyasını indirin
    - ZIP dosyasını bir klasöre çıkarın (örneğin: `C:\Program Files\Malzemecim`)
+   - **ÖNEMLİ:** ZIP'i çıkarırken içinde `malzemecim-windows-v1.0.0` klasörü olacak, bu klasörün içindeki tüm dosyaların (exe, dll, data vb.) aynı yerde olduğundan emin olun
 
 2. **Visual C++ Redistributable Kontrolü**
    - Eğer uygulama çalışmazsa, Visual C++ Redistributable'ı indirip yükleyin:
@@ -32,14 +33,25 @@
 
 ### Sorun Giderme
 
+**"Yan yana yapılandırması doğru olmadığından başlatılamadı" hatası:**
+- Bu hata Visual C++ Redistributable eksikliğinden kaynaklanır
+- **ÇÖZÜM:** Visual C++ Redistributable 2015-2022 (x64) yükleyin:
+  1. Şu linkten indirin: https://aka.ms/vs/17/release/vc_redist.x64.exe
+  2. İndirilen dosyayı çalıştırın ve kurulumu tamamlayın
+  3. Bilgisayarı yeniden başlatın (gerekirse)
+  4. Uygulamayı tekrar çalıştırın
+- Detaylı bilgi için: `VC_Redistributable_Indirme.md` dosyasına bakın
+
 **Uygulama açılmıyor:**
 - Visual C++ Redistributable'ın yüklü olduğundan emin olun
 - Windows güncellemelerini kontrol edin
 - Antivirüs yazılımının uygulamayı engellemediğinden emin olun
+- ZIP dosyasını çıkarırken çift klasör oluşmamasına dikkat edin (örnek: `malzemecim-windows-v1.0.0\malzemecim-windows-v1.0.0\` yerine sadece `malzemecim-windows-v1.0.0\` olmalı)
 
 **DLL hatası alıyorsanız:**
 - Tüm dosyaların aynı klasörde olduğundan emin olun
 - `data` klasörünün mevcut olduğundan emin olun
+- ZIP dosyasını doğru şekilde çıkardığınızdan emin olun
 
 ---
 
