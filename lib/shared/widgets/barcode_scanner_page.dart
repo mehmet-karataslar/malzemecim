@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/app_theme.dart';
 import '../utils/camera_helper_stub.dart'
     if (dart.library.html) '../utils/camera_helper_web.dart'
@@ -26,11 +27,201 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
   camera_helper.CameraDevice? _selectedCamera;
   bool _isFocusing = false;
   double _zoomLevel = 1.0;
+  bool _permissionRequested = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeScanner();
+    _requestPermissionAndInitialize();
+  }
+
+  /// Kamera izni iste ve scanner'ı başlat
+  Future<void> _requestPermissionAndInitialize() async {
+    // İzin durumunu kontrol et
+    bool hasPermission = false;
+
+    if (kIsWeb) {
+      // Web için kamera izni iste
+      hasPermission = await camera_helper.CameraHelper.requestCameraPermission();
+      if (!hasPermission) {
+        setState(() {
+          _isInitializing = false;
+          _hasError = true;
+          _errorMessage = 'Kamera izni verilmedi.\n\nLütfen:\n1. Tarayıcınızın kamera iznini verin\n2. HTTPS veya localhost kullanın\n3. Sayfayı yenileyin';
+        });
+        _showPermissionDialog();
+        return;
+      }
+    } else {
+      // Mobil için permission_handler kullan
+      final isWindows = _isWindowsPlatform();
+      if (!isWindows) {
+        // Android/iOS için izin kontrolü
+        final status = await Permission.camera.status;
+        
+        if (status.isDenied) {
+          // İzin henüz istenmemiş, iste
+          final result = await Permission.camera.request();
+          hasPermission = result.isGranted;
+        } else if (status.isPermanentlyDenied) {
+          // İzin kalıcı olarak reddedilmiş, ayarlara yönlendir
+          setState(() {
+            _isInitializing = false;
+            _hasError = true;
+            _errorMessage = 'Kamera izni kalıcı olarak reddedilmiş.\n\nLütfen uygulama ayarlarından kamera iznini açın.';
+          });
+          _showPermissionDialog(isPermanentlyDenied: true);
+          return;
+        } else {
+          hasPermission = status.isGranted;
+        }
+
+        if (!hasPermission) {
+          setState(() {
+            _isInitializing = false;
+            _hasError = true;
+            _errorMessage = 'Kamera izni verilmedi.\n\nLütfen uygulama ayarlarından kamera iznini verin.';
+          });
+          _showPermissionDialog();
+          return;
+        }
+      }
+    }
+
+    // İzin alındıysa scanner'ı başlat
+    await _initializeScanner();
+  }
+
+  /// Kamera izni dialogu göster
+  void _showPermissionDialog({bool isPermanentlyDenied = false}) {
+    if (_permissionRequested) return;
+    _permissionRequested = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.camera_alt,
+                color: AppTheme.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Kamera İzni Gerekli'),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              kIsWeb
+                  ? 'Barkod taramak için kamera erişimine ihtiyacımız var.'
+                  : 'Barkod taramak için kamera iznine ihtiyacımız var.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            if (kIsWeb) ...[
+              _buildPermissionStep('1', 'Tarayıcı adres çubuğundaki kamera ikonuna tıklayın'),
+              _buildPermissionStep('2', 'Kamera iznini "İzin Ver" olarak seçin'),
+              _buildPermissionStep('3', 'Sayfayı yenileyin'),
+            ] else ...[
+              if (isPermanentlyDenied)
+                _buildPermissionStep('1', 'Ayarlar > Uygulamalar > malzemecim > İzinler')
+              else
+                _buildPermissionStep('1', 'Açılan izin penceresinde "İzin Ver" seçeneğini seçin'),
+              _buildPermissionStep('2', 'Kamera iznini açın'),
+              _buildPermissionStep('3', 'Uygulamayı yeniden başlatın'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _permissionRequested = false;
+              Navigator.pop(context);
+            },
+            child: const Text('İptal'),
+          ),
+          if (isPermanentlyDenied && !kIsWeb)
+            ElevatedButton(
+              onPressed: () async {
+                await openAppSettings();
+                _permissionRequested = false;
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Ayarlara Git'),
+            )
+          else
+            ElevatedButton(
+              onPressed: () async {
+                _permissionRequested = false;
+                Navigator.pop(context);
+                await _requestPermissionAndInitialize();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tekrar Dene'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initializeScanner() async {
@@ -177,50 +368,112 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: const Text('Barkod Tara'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.qr_code_scanner, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('Barkod Tara'),
+          ],
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withOpacity(0.8),
+              ],
+            ),
+          ),
+        ),
         actions: [
           // Web ve Windows için kamera seçimi
           if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && _availableCameras.length > 1)
-            IconButton(
-              icon: const Icon(Icons.videocam),
+            _buildActionButton(
+              icon: Icons.videocam,
               onPressed: _showCameraSelector,
               tooltip: 'Kamera Seç',
             ),
           // Web ve Windows için kamera değiştirme butonu
           if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && scannerController != null)
-            IconButton(
-              icon: const Icon(Icons.cameraswitch),
+            _buildActionButton(
+              icon: Icons.cameraswitch,
               onPressed: _switchCamera,
               tooltip: 'Kamera Değiştir',
             ),
           // Odaklanma butonu
           if (scannerController != null)
-            IconButton(
-              icon: const Icon(Icons.center_focus_strong),
+            _buildActionButton(
+              icon: Icons.center_focus_strong,
               onPressed: _triggerFocus,
               tooltip: 'Odaklan',
             ),
           // Web'de flash desteklenmiyor, sadece mobilde göster
           if (!kIsWeb && scannerController != null)
-            IconButton(
-              icon: Icon(isFlashOn ? Icons.flash_on : Icons.flash_off),
+            _buildActionButton(
+              icon: isFlashOn ? Icons.flash_on : Icons.flash_off,
               onPressed: _toggleFlash,
               tooltip: 'Flaş',
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // Scanner Area
-          Expanded(flex: 3, child: _buildScannerArea()),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.surfaceColor,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Scanner Area
+              Expanded(flex: isMobile ? 4 : 3, child: _buildScannerArea()),
 
-          // Manual Input & Controls
-          Expanded(flex: 1, child: _buildControlsArea()),
-        ],
+              // Manual Input & Controls
+              Expanded(flex: isMobile ? 1 : 1, child: _buildControlsArea()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: IconButton(
+        icon: Icon(icon),
+        onPressed: onPressed,
+        tooltip: tooltip,
+        color: Colors.white,
       ),
     );
   }
@@ -542,106 +795,186 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
     }
 
     // Web ve mobil için aynı kamera tarayıcı kullan
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Container(
-      margin: EdgeInsets.all(kIsWeb ? 24 : 16),
+      margin: EdgeInsets.all(isMobile ? 12 : (kIsWeb ? 24 : 16)),
       constraints: kIsWeb 
         ? const BoxConstraints(maxWidth: 1200, maxHeight: 800)
         : null,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(kIsWeb ? 20 : 16),
+        borderRadius: BorderRadius.circular(isMobile ? 20 : 24),
         border: Border.all(
           color: AppTheme.primaryColor, 
-          width: kIsWeb ? 4 : 3,
+          width: isMobile ? 3 : 4,
         ),
-        boxShadow: kIsWeb ? [
+        boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
-            blurRadius: 20,
-            spreadRadius: 5,
+            color: AppTheme.primaryColor.withOpacity(0.25),
+            blurRadius: isMobile ? 15 : 25,
+            spreadRadius: isMobile ? 2 : 4,
+            offset: const Offset(0, 4),
           ),
-        ] : null,
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(kIsWeb ? 16 : 13),
+        borderRadius: BorderRadius.circular(isMobile ? 18 : 22),
         child: Stack(
           children: [
             if (scannerController != null)
               AspectRatio(
-                aspectRatio: kIsWeb ? 16 / 9 : 4 / 3,
+                aspectRatio: kIsWeb ? 16 / 9 : (isMobile ? 3 / 4 : 4 / 3),
                 child: MobileScanner(
                   controller: scannerController!,
                   onDetect: _onBarcodeDetect,
-                  fit: kIsWeb ? BoxFit.contain : BoxFit.cover, // Web için contain - daha net görüntü
+                  fit: kIsWeb ? BoxFit.contain : BoxFit.cover,
                   errorBuilder: (context, error, child) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.camera_alt, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Kamera erişimi gerekli',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.grey[100]!,
+                            Colors.grey[200]!,
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: isMobile ? 48 : 64,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              kIsWeb
-                                ? 'Lütfen tarayıcınızın kamera iznini verin\n(HTTPS veya localhost gerekli)'
-                                : 'Lütfen uygulama ayarlarından kamera iznini verin',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey[600]),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Kamera erişimi gerekli',
+                              style: TextStyle(
+                                fontSize: isMobile ? 16 : 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _initializeScanner,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Tekrar Dene'),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 32),
+                              child: Text(
+                                kIsWeb
+                                  ? 'Lütfen tarayıcınızın kamera iznini verin\n(HTTPS veya localhost gerekli)'
+                                  : 'Lütfen uygulama ayarlarından kamera iznini verin',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: isMobile ? 13 : 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: _initializeScanner,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Tekrar Dene'),
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 20 : 24,
+                                  vertical: isMobile ? 12 : 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
               )
             else
-              const Center(child: CircularProgressIndicator()),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppTheme.primaryColor.withOpacity(0.1),
+                      AppTheme.primaryColor.withOpacity(0.05),
+                    ],
+                  ),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+
+            // Modern scanning overlay
+            _buildScanningOverlay(),
 
             // Odaklanma göstergesi
             if (_isFocusing)
               Center(
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: AppTheme.primaryColor,
-                      width: 3,
-                    ),
-                    borderRadius: BorderRadius.circular(50),
-                  ),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 300),
+                  builder: (context, value, child) {
+                    return Container(
+                      width: 100 * value,
+                      height: 100 * value,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(1 - value),
+                          width: 3,
+                        ),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    );
+                  },
                 ),
               ),
-
-            // Scanning overlay
-            _buildScanningOverlay(),
 
             // Web ve Windows için kamera bilgisi
             if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && _selectedCamera != null)
               Positioned(
-                top: 8,
-                left: 8,
+                top: isMobile ? 12 : 16,
+                left: isMobile ? 12 : 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 10 : 12,
+                    vertical: isMobile ? 5 : 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.8),
+                        Colors.black.withOpacity(0.6),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -652,16 +985,16 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
                           : _selectedCamera!.isPhoneCamera 
                             ? Icons.phone_android 
                             : Icons.videocam,
-                        size: 16,
+                        size: isMobile ? 14 : 16,
                         color: Colors.white,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         _selectedCamera!.label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontSize: isMobile ? 11 : 12,
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -677,48 +1010,64 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
   }
 
   Widget _buildScanningOverlay() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final scanFrameWidth = isMobile ? 250.0 : 300.0;
+    final scanFrameHeight = isMobile ? 120.0 : 150.0;
+    
     return Container(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(13)),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+      ),
       child: Stack(
         children: [
-          // Scanning frame
+          // Köşeleri kesilmiş tarama çerçevesi
           Center(
             child: Container(
-              width: 250,
-              height: 100,
+              width: scanFrameWidth,
+              height: scanFrameHeight,
               decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.primaryColor, width: 3),
-                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primaryColor,
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Stack(
                 children: [
-                  // Corner indicators
+                  // Animasyonlu köşe göstergeleri
                   ...List.generate(4, (index) {
                     return Positioned(
-                      top: index < 2 ? 0 : null,
-                      bottom: index >= 2 ? 0 : null,
-                      left: index % 2 == 0 ? 0 : null,
-                      right: index % 2 == 1 ? 0 : null,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          borderRadius: BorderRadius.only(
-                            topLeft: index == 0
-                                ? const Radius.circular(8)
-                                : Radius.zero,
-                            topRight: index == 1
-                                ? const Radius.circular(8)
-                                : Radius.zero,
-                            bottomLeft: index == 2
-                                ? const Radius.circular(8)
-                                : Radius.zero,
-                            bottomRight: index == 3
-                                ? const Radius.circular(8)
-                                : Radius.zero,
-                          ),
-                        ),
+                      top: index < 2 ? -2 : null,
+                      bottom: index >= 2 ? -2 : null,
+                      left: index % 2 == 0 ? -2 : null,
+                      right: index % 2 == 1 ? -2 : null,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 1500),
+                        curve: Curves.easeInOut,
+                        builder: (context, value, child) {
+                          return Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.3 + (value * 0.7)),
+                              borderRadius: BorderRadius.only(
+                                topLeft: index == 0
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                                topRight: index == 1
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                                bottomLeft: index == 2
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                                bottomRight: index == 3
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   }),
@@ -727,28 +1076,53 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
             ),
           ),
 
-          // Instructions
+          // Tarama talimatları
           Positioned(
-            bottom: 40,
+            bottom: isMobile ? 30 : 40,
             left: 0,
             right: 0,
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(12),
+              margin: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                detectedCode != null
-                    ? 'Barkod algılandı: $detectedCode'
-                    : 'Barkodu çerçeve içine yerleştirin',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withOpacity(0.8),
+                    Colors.black.withOpacity(0.7),
+                  ],
                 ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.qr_code_2,
+                    color: Colors.white,
+                    size: isMobile ? 18 : 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      detectedCode != null
+                          ? 'Barkod algılandı!'
+                          : 'Barkodu çerçeve içine yerleştirin',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isMobile ? 13 : 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -758,9 +1132,27 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
   }
 
   Widget _buildControlsArea() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(isMobile ? 24 : 0),
+          topRight: Radius.circular(isMobile ? 24 : 0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            spreadRadius: 2,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Manuel giriş alanı
           TextField(
@@ -768,19 +1160,64 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
             decoration: InputDecoration(
               labelText: 'Manuel Barkod Girişi',
               hintText: '1234567890123',
-              prefixIcon: const Icon(Icons.qr_code),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: _submitManualCode,
+              prefixIcon: Container(
+                margin: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.qr_code,
+                  color: AppTheme.primaryColor,
+                  size: isMobile ? 20 : 24,
+                ),
+              ),
+              suffixIcon: Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryColor,
+                      AppTheme.primaryColor.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.send, color: Colors.white),
+                  onPressed: _submitManualCode,
+                ),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  width: 2,
+                ),
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppTheme.primaryColor,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: AppTheme.surfaceColor,
             ),
+            style: TextStyle(fontSize: isMobile ? 14 : 16),
             onSubmitted: (_) => _submitManualCode(),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: isMobile ? 12 : 16),
 
           // Butonlar
           Row(
@@ -788,23 +1225,43 @@ class _BarcodeScannorPageState extends State<BarcodeScannorPage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close, size: 20),
                   label: const Text('İptal'),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      vertical: isMobile ? 14 : 16,
+                    ),
+                    side: BorderSide(
+                      color: Colors.grey[400]!,
+                      width: 2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              if (detectedCode != null)
+              if (detectedCode != null) ...[
+                SizedBox(width: isMobile ? 12 : 16),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context, detectedCode),
-                    icon: const Icon(Icons.check),
+                    icon: const Icon(Icons.check, size: 20),
                     label: const Text('Kullan'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.successColor,
                       foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isMobile ? 14 : 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
                     ),
                   ),
                 ),
+              ],
             ],
           ),
         ],

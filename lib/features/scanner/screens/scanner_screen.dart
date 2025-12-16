@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/camera_helper_stub.dart'
     if (dart.library.html) '../../../shared/utils/camera_helper_web.dart'
     if (dart.library.io) '../../../shared/utils/camera_helper_windows.dart' as camera_helper;
 import 'dart:io' if (dart.library.html) '../../../shared/utils/platform_stub.dart' as io;
+import '../../products/providers/product_provider.dart';
+import '../../products/screens/product_detail_screen.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -28,17 +31,210 @@ class _ScannerScreenState extends State<ScannerScreen> {
   List<camera_helper.CameraDevice> _availableCameras = [];
   camera_helper.CameraDevice? _selectedCamera;
   bool _isFocusing = false;
+  bool _permissionRequested = false;
+  String? _lastProcessedCode; // Son işlenen barkod
+  DateTime? _lastProcessedTime; // Son işlenme zamanı
+  bool _isNavigating = false; // Detay sayfasına gidiliyor mu?
 
   @override
   void initState() {
     super.initState();
-    _initializeScanner();
+    _requestPermissionAndInitialize();
+  }
+
+  /// Kamera izni iste ve scanner'ı başlat
+  Future<void> _requestPermissionAndInitialize() async {
+    // İzin durumunu kontrol et
+    bool hasPermission = false;
+
+    if (kIsWeb) {
+      // Web için kamera izni iste
+      hasPermission = await camera_helper.CameraHelper.requestCameraPermission();
+      if (!hasPermission) {
+        setState(() {
+          _isInitializing = false;
+          _hasError = true;
+          _errorMessage = 'Kamera izni verilmedi.\n\nLütfen:\n1. Tarayıcınızın kamera iznini verin\n2. HTTPS veya localhost kullanın\n3. Sayfayı yenileyin';
+        });
+        _showPermissionDialog();
+        return;
+      }
+    } else {
+      // Mobil için permission_handler kullan
+      final isWindows = _isWindowsPlatform();
+      if (!isWindows) {
+        // Android/iOS için izin kontrolü
+        final status = await Permission.camera.status;
+        
+        if (status.isDenied) {
+          // İzin henüz istenmemiş, iste
+          final result = await Permission.camera.request();
+          hasPermission = result.isGranted;
+        } else if (status.isPermanentlyDenied) {
+          // İzin kalıcı olarak reddedilmiş, ayarlara yönlendir
+          setState(() {
+            _isInitializing = false;
+            _hasError = true;
+            _errorMessage = 'Kamera izni kalıcı olarak reddedilmiş.\n\nLütfen uygulama ayarlarından kamera iznini açın.';
+          });
+          _showPermissionDialog(isPermanentlyDenied: true);
+          return;
+        } else {
+          hasPermission = status.isGranted;
+        }
+
+        if (!hasPermission) {
+          setState(() {
+            _isInitializing = false;
+            _hasError = true;
+            _errorMessage = 'Kamera izni verilmedi.\n\nLütfen uygulama ayarlarından kamera iznini verin.';
+          });
+          _showPermissionDialog();
+          return;
+        }
+      }
+    }
+
+    // İzin alındıysa scanner'ı başlat
+    await _initializeScanner();
+  }
+
+  /// Kamera izni dialogu göster
+  void _showPermissionDialog({bool isPermanentlyDenied = false}) {
+    if (_permissionRequested) return;
+    _permissionRequested = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.camera_alt,
+                color: AppTheme.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Kamera İzni Gerekli'),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              kIsWeb
+                  ? 'Barkod taramak için kamera erişimine ihtiyacımız var.'
+                  : 'Barkod taramak için kamera iznine ihtiyacımız var.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            if (kIsWeb) ...[
+              _buildPermissionStep('1', 'Tarayıcı adres çubuğundaki kamera ikonuna tıklayın'),
+              _buildPermissionStep('2', 'Kamera iznini "İzin Ver" olarak seçin'),
+              _buildPermissionStep('3', 'Sayfayı yenileyin'),
+            ] else ...[
+              if (isPermanentlyDenied)
+                _buildPermissionStep('1', 'Ayarlar > Uygulamalar > malzemecim > İzinler')
+              else
+                _buildPermissionStep('1', 'Açılan izin penceresinde "İzin Ver" seçeneğini seçin'),
+              _buildPermissionStep('2', 'Kamera iznini açın'),
+              _buildPermissionStep('3', 'Uygulamayı yeniden başlatın'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _permissionRequested = false;
+              Navigator.pop(context);
+            },
+            child: const Text('İptal'),
+          ),
+          if (isPermanentlyDenied && !kIsWeb)
+            ElevatedButton(
+              onPressed: () async {
+                await openAppSettings();
+                _permissionRequested = false;
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Ayarlara Git'),
+            )
+          else
+            ElevatedButton(
+              onPressed: () async {
+                _permissionRequested = false;
+                Navigator.pop(context);
+                await _requestPermissionAndInitialize();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tekrar Dene'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initializeScanner() async {
     try {
       // Windows kontrolü (sadece Windows için özel işlem)
-      if (!kIsWeb) {
+    if (!kIsWeb) {
         final isWindows = _isWindowsPlatform();
         if (isWindows) {
           // Windows için özel işlem
@@ -179,21 +375,51 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: const Text('Barkod Tarayıcı'),
+        elevation: 0,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.qr_code_scanner, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('Barkod Tarayıcı'),
+          ],
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withOpacity(0.8),
+              ],
+            ),
+          ),
+        ),
         actions: [
           // Web ve Windows için kamera seçimi
           if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && _availableCameras.length > 1)
-            IconButton(
-              icon: const Icon(Icons.videocam),
+            _buildActionButton(
+              icon: Icons.videocam,
               onPressed: _showCameraSelector,
               tooltip: 'Kamera Seç',
             ),
           // Web ve Windows için kamera değiştirme
           if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && scannerController != null)
-            IconButton(
-              icon: const Icon(Icons.cameraswitch),
+            _buildActionButton(
+              icon: Icons.cameraswitch,
               onPressed: () {
                 scannerController?.switchCamera();
               },
@@ -201,37 +427,81 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           // Odaklanma butonu
           if (scannerController != null)
-            IconButton(
-              icon: const Icon(Icons.center_focus_strong),
+            _buildActionButton(
+              icon: Icons.center_focus_strong,
               onPressed: _triggerFocus,
               tooltip: 'Odaklan',
             ),
-          IconButton(
-            icon: Icon(isScanning ? Icons.pause : Icons.play_arrow),
+          _buildActionButton(
+            icon: isScanning ? Icons.pause : Icons.play_arrow,
             onPressed: _toggleScanning,
             tooltip: isScanning ? 'Duraklat' : 'Başlat',
           ),
           // Web'de flash desteklenmiyor
           if (!kIsWeb)
-            IconButton(
-              icon: Icon(isFlashOn ? Icons.flash_on : Icons.flash_off),
-              onPressed: _toggleFlash,
+            _buildActionButton(
+              icon: isFlashOn ? Icons.flash_on : Icons.flash_off,
+            onPressed: _toggleFlash,
               tooltip: 'Flaş',
-            ),
+          ),
         ],
       ),
-      body: Consumer<AuthProvider>(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppTheme.primaryColor.withOpacity(0.05),
+              AppTheme.surfaceColor,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
+              if (isMobile) {
           return Column(
             children: [
-              // Scanner Area
-              Expanded(flex: 4, child: _buildScannerArea()),
+                    // Scanner Area - Mobilde daha fazla alan
+                    Expanded(flex: 5, child: _buildScannerArea()),
+                    // Info Panel - Mobilde daha kompakt
+                    Expanded(flex: 2, child: _buildInfoPanel(authProvider)),
+                  ],
+                );
+              } else {
+                return Row(
+                  children: [
+                    // Scanner Area - Web'de yan yana
+                    Expanded(flex: 3, child: _buildScannerArea()),
+                    // Info Panel - Web'de yan panel
+                    Expanded(flex: 2, child: _buildInfoPanel(authProvider)),
+                  ],
+                );
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
-              // Info Panel
-              Expanded(flex: 3, child: _buildInfoPanel(authProvider)),
-            ],
-          );
-        },
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: IconButton(
+        icon: Icon(icon),
+        onPressed: onPressed,
+        tooltip: tooltip,
+        color: Colors.white,
       ),
     );
   }
@@ -332,28 +602,28 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    setState(() {
+                  setState(() {
                       _isInitializing = true;
-                    });
+                  });
                     await _initializeScanner();
-                  },
+              },
                   icon: const Icon(Icons.refresh),
                   label: const Text('Kamerayı Yeniden Tara'),
-                ),
+            ),
                 const SizedBox(height: 12),
                 _buildWindowsAlternatives(),
-              ],
+          ],
             ),
-          ),
-        );
-      } else {
+        ),
+      );
+    } else {
         // Kamera var, listele
-        return Container(
-          margin: const EdgeInsets.all(16),
+      return Container(
+        margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.primaryColor, width: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.primaryColor, width: 2),
             color: Colors.green[50],
           ),
           child: Column(
@@ -437,115 +707,216 @@ class _ScannerScreenState extends State<ScannerScreen> {
     }
 
     // Web ve mobil için aynı kamera tarayıcı kullan
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Container(
-      margin: EdgeInsets.all(kIsWeb ? 24 : 16),
+      margin: EdgeInsets.all(isMobile ? 12 : (kIsWeb ? 24 : 16)),
       constraints: kIsWeb 
         ? const BoxConstraints(maxWidth: 1200, maxHeight: 800)
         : null,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(kIsWeb ? 20 : 16),
+        borderRadius: BorderRadius.circular(isMobile ? 20 : 24),
         border: Border.all(
           color: AppTheme.primaryColor, 
-          width: kIsWeb ? 4 : 2,
+          width: isMobile ? 3 : 4,
         ),
-        boxShadow: kIsWeb ? [
+        boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
-            blurRadius: 20,
-            spreadRadius: 5,
+            color: AppTheme.primaryColor.withOpacity(0.25),
+            blurRadius: isMobile ? 15 : 25,
+            spreadRadius: isMobile ? 2 : 4,
+            offset: const Offset(0, 4),
           ),
-        ] : null,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(kIsWeb ? 16 : 14),
+        ],
+        ),
+        child: ClipRRect(
+        borderRadius: BorderRadius.circular(isMobile ? 18 : 22),
         child: Stack(
           children: [
             if (scannerController != null)
               AspectRatio(
-                aspectRatio: kIsWeb ? 16 / 9 : 4 / 3,
+                aspectRatio: kIsWeb ? 16 / 9 : (isMobile ? 3 / 4 : 4 / 3),
                 child: MobileScanner(
                   controller: scannerController!,
                   onDetect: (BarcodeCapture capture) {
                     final List<Barcode> barcodes = capture.barcodes;
-                    if (barcodes.isNotEmpty && isScanning) {
+                    if (barcodes.isNotEmpty && isScanning && !_isNavigating) {
                       final String? code = barcodes.first.rawValue;
                       if (code != null && code.isNotEmpty) {
+                        // Aynı barkodun tekrar algılanmasını engelle
+                        final now = DateTime.now();
+                        if (_lastProcessedCode == code && 
+                            _lastProcessedTime != null &&
+                            now.difference(_lastProcessedTime!) < const Duration(seconds: 3)) {
+                          return; // Aynı barkod, yok say
+                        }
+
+                        // Yeni barkod algılandı
+                        _lastProcessedCode = code;
+                        _lastProcessedTime = now;
+                        
                         setState(() {
                           lastScannedCode = code;
                           isScanning = false;
+                          _isNavigating = true;
                         });
-                        _searchProduct(code);
+                        
+                        // Scanner'ı durdur
+                        scannerController?.stop();
+                        
+                        // Otomatik olarak ürün detay sayfasına git
+                        _searchProductAndNavigate(code);
                       }
                     }
                   },
-                  fit: kIsWeb ? BoxFit.contain : BoxFit.cover, // Web için contain - daha net görüntü
+                  fit: kIsWeb ? BoxFit.contain : BoxFit.cover,
                   errorBuilder: (context, error, child) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.camera_alt, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Kamera erişimi gerekli',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.grey[100]!,
+                            Colors.grey[200]!,
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: isMobile ? 48 : 64,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              kIsWeb
-                                  ? 'Lütfen tarayıcınızın kamera iznini verin\n(HTTPS veya localhost gerekli)'
-                                  : 'Lütfen uygulama ayarlarından kamera iznini verin',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey[600]),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Kamera erişimi gerekli',
+                              style: TextStyle(
+                                fontSize: isMobile ? 16 : 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _initializeScanner,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Tekrar Dene'),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 32),
+                              child: Text(
+                                kIsWeb
+                                    ? 'Lütfen tarayıcınızın kamera iznini verin\n(HTTPS veya localhost gerekli)'
+                                    : 'Lütfen uygulama ayarlarından kamera iznini verin',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: isMobile ? 13 : 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: _initializeScanner,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Tekrar Dene'),
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 20 : 24,
+                                  vertical: isMobile ? 12 : 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
               )
             else
-              const Center(child: CircularProgressIndicator()),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppTheme.primaryColor.withOpacity(0.1),
+                      AppTheme.primaryColor.withOpacity(0.05),
+                    ],
+                  ),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+
+            // Modern scanning overlay
+            _buildModernScanningOverlay(),
 
             // Odaklanma göstergesi
             if (_isFocusing)
               Center(
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: AppTheme.primaryColor,
-                      width: 3,
-                    ),
-                    borderRadius: BorderRadius.circular(50),
-                  ),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 300),
+                  builder: (context, value, child) {
+                    return Container(
+                      width: 100 * value,
+                      height: 100 * value,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(1 - value),
+                          width: 3,
+                        ),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    );
+                  },
                 ),
               ),
 
             // Web ve Windows için kamera bilgisi
             if ((kIsWeb || (!kIsWeb && _isWindowsPlatform())) && _selectedCamera != null)
               Positioned(
-                top: 8,
-                left: 8,
+                top: isMobile ? 12 : 16,
+                left: isMobile ? 12 : 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 10 : 12,
+                    vertical: isMobile ? 5 : 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.8),
+                        Colors.black.withOpacity(0.6),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -556,16 +927,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
                           : _selectedCamera!.isPhoneCamera 
                             ? Icons.phone_android 
                             : Icons.videocam,
-                        size: 16,
+                        size: isMobile ? 14 : 16,
                         color: Colors.white,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         _selectedCamera!.label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontSize: isMobile ? 11 : 12,
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -576,6 +947,128 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildModernScanningOverlay() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final scanFrameWidth = isMobile ? 250.0 : 300.0;
+    final scanFrameHeight = isMobile ? 120.0 : 150.0;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+      ),
+      child: Stack(
+        children: [
+          // Köşeleri kesilmiş tarama çerçevesi
+          Center(
+            child: Container(
+              width: scanFrameWidth,
+              height: scanFrameHeight,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppTheme.primaryColor,
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Stack(
+                children: [
+                  // Animasyonlu köşe göstergeleri
+                  ...List.generate(4, (index) {
+                    return Positioned(
+                      top: index < 2 ? -2 : null,
+                      bottom: index >= 2 ? -2 : null,
+                      left: index % 2 == 0 ? -2 : null,
+                      right: index % 2 == 1 ? -2 : null,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 1500),
+                        curve: Curves.easeInOut,
+                        builder: (context, value, child) {
+                          return Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.3 + (value * 0.7)),
+                              borderRadius: BorderRadius.only(
+                                topLeft: index == 0
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                                topRight: index == 1
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                                bottomLeft: index == 2
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                                bottomRight: index == 3
+                                    ? const Radius.circular(12)
+                                    : Radius.zero,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+
+          // Tarama talimatları
+          Positioned(
+            bottom: isMobile ? 30 : 40,
+            left: 0,
+            right: 0,
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withOpacity(0.8),
+                    Colors.black.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.qr_code_2,
+                    color: Colors.white,
+                    size: isMobile ? 18 : 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      lastScannedCode != null
+                          ? 'Barkod algılandı!'
+                          : 'Barkodu çerçeve içine yerleştirin',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isMobile ? 13 : 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -687,131 +1180,292 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Widget _buildInfoPanel(AuthProvider authProvider) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(isMobile ? 24 : 0),
+          topRight: Radius.circular(isMobile ? 24 : 0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            spreadRadius: 2,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Put the content into an Expanded SingleChildScrollView so it
-          // can scroll when there's not enough vertical space (prevents
-          // RenderFlex overflow inside the parent Expanded).
+          // Başlık
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryColor,
+                      AppTheme.primaryColor.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.info_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+          Text(
+            'Tarama Durumu',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // İçerik
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tarama Durumu',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Scan Status
-                  Row(
-                    children: [
-                      Icon(
-                        isScanning ? Icons.qr_code_scanner : Icons.pause_circle,
+            children: [
+                  // Scan Status Card
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isMobile ? 14 : 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isScanning
+                            ? [
+                                AppTheme.successColor.withOpacity(0.1),
+                                AppTheme.successColor.withOpacity(0.05),
+                              ]
+                            : [
+                                AppTheme.warningColor.withOpacity(0.1),
+                                AppTheme.warningColor.withOpacity(0.05),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
                         color: isScanning
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        isScanning ? 'Tarama aktif' : 'Tarama duraklatıldı',
-                        style: TextStyle(
-                          color: isScanning
-                              ? AppTheme.successColor
-                              : AppTheme.warningColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Last Scanned Code
-                  if (lastScannedCode != null) ...[
-                    Text(
-                      'Son Taranan Kod:',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: Text(
-                        lastScannedCode!,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                            ? AppTheme.successColor.withOpacity(0.3)
+                            : AppTheme.warningColor.withOpacity(0.3),
+                        width: 2,
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // Action Buttons
-                    Row(
+                    child: Row(
                       children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _searchProduct(lastScannedCode!),
-                            icon: const Icon(Icons.search),
-                            label: const Text('Ürün Ara'),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                color: isScanning
+                    ? AppTheme.successColor
+                    : AppTheme.warningColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isScanning ? Icons.qr_code_scanner : Icons.pause_circle,
+                            color: Colors.white,
+                            size: isMobile ? 20 : 24,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        if (authProvider.isAdmin)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => _addNewProduct(lastScannedCode!),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Yeni Ürün'),
-                            ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+              Text(
+                                isScanning ? 'Tarama Aktif' : 'Tarama Duraklatıldı',
+                style: TextStyle(
+                  color: isScanning
+                      ? AppTheme.successColor
+                      : AppTheme.warningColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isMobile ? 14 : 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isScanning
+                                    ? 'Barkod algılanıyor...'
+                                    : 'Tarama durduruldu',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: isMobile ? 12 : 13,
+                ),
+              ),
+            ],
                           ),
+                        ),
                       ],
                     ),
-                  ] else ...[
-                    // No scan yet
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(8),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Last Scanned Code
+          if (lastScannedCode != null) ...[
+            Text(
+                      'Son Taranan Kod',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: Column(
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+                      padding: EdgeInsets.all(isMobile ? 14 : 16),
+              decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor.withOpacity(0.1),
+                            AppTheme.primaryColor.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Icon(Icons.qr_code_2, size: 48, color: Colors.blue[600]),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Barkod veya QR kodu taramak için\nkamerayı ürün üzerine tutun',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.blue[600], fontSize: 14),
+                          Icon(
+                            Icons.qr_code,
+                            color: AppTheme.primaryColor,
+                            size: isMobile ? 20 : 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+              child: Text(
+                lastScannedCode!,
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: isMobile ? 14 : 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
+              ),
+            ),
 
-                  // Quick Actions (Admin only)
-                  if (authProvider.isAdmin && lastScannedCode != null) ...[
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    Text(
-                      'Hızlı İşlemler',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+            const SizedBox(height: 16),
+
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _searchProductAndNavigate(lastScannedCode!),
+                            icon: const Icon(Icons.search, size: 20),
+                            label: Text(isMobile ? 'Ara' : 'Ürün Ara'),
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                vertical: isMobile ? 14 : 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (authProvider.isAdmin) ...[
+                          const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _addNewProduct(lastScannedCode!),
+                              icon: const Icon(Icons.add, size: 20),
+                              label: Text(isMobile ? 'Ekle' : 'Yeni Ürün'),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isMobile ? 14 : 16,
+                                ),
+                                side: const BorderSide(
+                                  color: AppTheme.primaryColor,
+                                  width: 2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+              ],
+            ),
+          ] else ...[
+            // No scan yet
+            Container(
+              width: double.infinity,
+                      padding: EdgeInsets.all(isMobile ? 20 : 24),
+              decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor.withOpacity(0.1),
+                            AppTheme.primaryColor.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                          width: 2,
+                        ),
+              ),
+              child: Column(
+                children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.qr_code_2,
+                              size: isMobile ? 40 : 48,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                  Text(
+                    'Barkod veya QR kodu taramak için\nkamerayı ürün üzerine tutun',
+                    textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: isMobile ? 13 : 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Quick Actions (Admin only)
+          if (authProvider.isAdmin && lastScannedCode != null) ...[
+                    const SizedBox(height: 20),
+                    const Divider(height: 1),
+            const SizedBox(height: 16),
+            Text(
+              'Hızlı İşlemler',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+            ),
                     ),
-                    const SizedBox(height: 8),
-                    _buildQuickActions(),
-                  ],
+                    const SizedBox(height: 12),
+            _buildQuickActions(),
+          ],
                 ],
               ),
             ),
@@ -850,17 +1504,83 @@ class _ScannerScreenState extends State<ScannerScreen> {
     required String label,
     required VoidCallback onTap,
   }) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-      onPressed: onTap,
-      backgroundColor: AppTheme.surfaceColor,
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 8, bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 16,
+              vertical: isMobile ? 10 : 12,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryColor.withOpacity(0.1),
+                  AppTheme.primaryColor.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppTheme.primaryColor.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: isMobile ? 16 : 18,
+                  color: AppTheme.primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
+  }
+
+  /// Taramayı sıfırla ve tekrar başlat
+  void _resetScanning() {
+    setState(() {
+      isScanning = true;
+      lastScannedCode = null;
+      _isNavigating = false;
+      _lastProcessedCode = null;
+      _lastProcessedTime = null;
+    });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && scannerController != null) {
+        scannerController?.start();
+      }
+    });
   }
 
   void _toggleScanning() {
     setState(() {
       isScanning = !isScanning;
+      if (!isScanning) {
+        // Tarama durdurulduğunda flag'leri temizle
+        _lastProcessedCode = null;
+        _lastProcessedTime = null;
+        _isNavigating = false;
+      }
     });
     
     if (scannerController != null) {
@@ -883,25 +1603,146 @@ class _ScannerScreenState extends State<ScannerScreen> {
     scannerController!.toggleTorch();
   }
 
-  void _searchProduct(String code) async {
-    // Ürün arama için search screen'e yönlendir
-    Navigator.pushNamed(context, '/search');
+  /// Barkod ile ürün ara ve otomatik olarak detay sayfasına yönlendir
+  void _searchProductAndNavigate(String code) async {
+    // Eğer zaten navigasyon yapılıyorsa, tekrar işlem yapma
+    if (_isNavigating) return;
+    
+    // Ürünleri yükle (eğer yüklenmemişse)
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    if (productProvider.products.isEmpty) {
+      await productProvider.loadProducts();
+    }
 
-    // Kısa bir delay ile arama yapılacak kodu search provider'a gönder
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Barkod ile ürün ara
+    final product = productProvider.getProductByBarcode(code);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Barkod ile arama: $code'),
-        backgroundColor: AppTheme.successColor,
-        action: SnackBarAction(
-          label: 'Ara',
-          onPressed: () {
-            Navigator.pushNamed(context, '/search');
-          },
-        ),
-      ),
-    );
+    if (product != null) {
+      // Ürün bulundu - direkt detay sayfasına git
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(product: product),
+          ),
+        ).then((_) {
+          // Geri dönüldüğünde taramayı tekrar başlat
+          if (mounted) {
+            _resetScanning();
+          }
+        });
+
+        // Başarı mesajı göster
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Ürün bulundu: ${product.name}'),
+                ),
+              ],
+            ),
+            backgroundColor: AppTheme.successColor,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      // Ürün bulunamadı - navigasyon flag'ini sıfırla
+      setState(() {
+        _isNavigating = false;
+      });
+      
+      if (mounted) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warningColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppTheme.warningColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Ürün Bulunamadı'),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Barkod: $code',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Bu barkod ile eşleşen bir ürün bulunamadı.',
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Taramayı tekrar başlat
+                  _resetScanning();
+                },
+                child: const Text('Tamam'),
+              ),
+              if (authProvider.isAdmin)
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Yeni ürün ekleme sayfasına yönlendir
+                    Navigator.pushNamed(
+                      context,
+                      '/add-product',
+                      arguments: {'barcode': code},
+                    ).then((_) {
+                      // Geri dönüldüğünde taramayı tekrar başlat
+                      if (mounted) {
+                        _resetScanning();
+                      }
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Yeni Ürün Ekle'),
+                ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  /// Eski metod - geriye uyumluluk için
+  void _searchProduct(String code) {
+    _searchProductAndNavigate(code);
   }
 
   void _addNewProduct(String code) {
@@ -1047,7 +1888,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           onSubmitted: (value) {
             if (value.isNotEmpty) {
               Navigator.pop(context);
-              _searchProduct(value);
+              _searchProductAndNavigate(value);
             }
           },
         ),
@@ -1060,7 +1901,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             onPressed: () {
               if (controller.text.isNotEmpty) {
                 Navigator.pop(context);
-                _searchProduct(controller.text);
+                _searchProductAndNavigate(controller.text);
               }
             },
             child: const Text('Ara'),

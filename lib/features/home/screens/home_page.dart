@@ -451,8 +451,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isWeb ? 8 : 4,
-                    childAspectRatio: isWeb ? 0.65 : 0.88,
+                    crossAxisCount: isWeb ? 7 : 3,
+                    childAspectRatio: isWeb ? 0.585 : 0.792,
                     crossAxisSpacing: isWeb ? 8 : 12,
                     mainAxisSpacing: isWeb ? 8 : 12,
                   ),
@@ -508,8 +508,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Görsel Bölümü - Sabit yükseklik
-              Container(
-                height: isWeb ? 240 : 160,
+              Container(height: isWeb ? 295 : 140,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -623,15 +622,46 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 14 : 13,
-                        color: Colors.grey[900],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            product.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isWeb ? 14 : 13,
+                              color: Colors.grey[900],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: isWeb ? 3 : 3),
+                          Text(
+                            product.brand,
+                            style: TextStyle(
+                              fontSize: isWeb ? 11 : 11,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (product.description.isNotEmpty) ...[
+                            SizedBox(height: isWeb ? 2 : 2),
+                            Text(
+                              product.description,
+                              style: TextStyle(
+                                fontSize: isWeb ? 10 : 10,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: isWeb ? 4 : 4),
                     Row(
@@ -652,7 +682,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         Container(
                           padding: EdgeInsets.symmetric(
                             horizontal: isWeb ? 5 : 6,
-                            vertical: 3,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),

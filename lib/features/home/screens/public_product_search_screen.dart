@@ -215,8 +215,8 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                     : GridView.builder(
                         padding: EdgeInsets.all(isWeb ? 16 : 8),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isWeb ? 8 : 2,
-                          childAspectRatio: isWeb ? 0.65 : 0.70,
+                          crossAxisCount: isWeb ? 7 : 2,
+                          childAspectRatio: isWeb ? 0.585 : 0.63,
                           crossAxisSpacing: isWeb ? 8 : 8,
                           mainAxisSpacing: isWeb ? 8 : 8,
                         ),
@@ -260,7 +260,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
           children: [
             // Product Image - Fixed height
             Container(
-              height: isWeb ? 240 : 160,
+              height: isWeb ? 295 : 140,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -331,25 +331,46 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isWeb ? 14 : 13,
-                        color: Colors.grey[900],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            product.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isWeb ? 14 : 13,
+                              color: Colors.grey[900],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: isWeb ? 3 : 3),
+                          Text(
+                            product.brand,
+                            style: TextStyle(
+                              fontSize: isWeb ? 11 : 11,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (product.description.isNotEmpty) ...[
+                            SizedBox(height: isWeb ? 2 : 2),
+                            Text(
+                              product.description,
+                              style: TextStyle(
+                                fontSize: isWeb ? 10 : 10,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: isWeb ? 4 : 4),
-                    Text(
-                      product.brand,
-                      style: TextStyle(
-                        fontSize: isWeb ? 11 : 11,
-                        color: Colors.grey[600],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: isWeb ? 4 : 4),
                     Row(
@@ -370,7 +391,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                         Container(
                           padding: EdgeInsets.symmetric(
                             horizontal: isWeb ? 5 : 6,
-                            vertical: 3,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),

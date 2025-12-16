@@ -147,15 +147,7 @@ class _UsbBarcodeListenerState extends State<UsbBarcodeListener> {
           // Tıklandığında focus'u tekrar al
           _focusNode.requestFocus();
         },
-        child: Stack(
-          children: [
-            widget.child,
-
-            // USB barkod durumu göstergesi
-            if (widget.enabled)
-              Positioned(top: 10, right: 10, child: _buildStatusIndicator()),
-          ],
-        ),
+        child: widget.child,
       ),
     );
   }

@@ -70,14 +70,12 @@ class AppointmentProvider with ChangeNotifier {
   Future<void> addAppointment({
     required String customerName,
     required String customerPhone,
+    required String businessId, // Seçilen işletme ID'si
     required DateTime date,
     required DateTime time,
     String? customerEmail,
     String? notes,
   }) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Kullanıcı girişi yapılmamış');
-
     try {
       _isLoading = true;
       notifyListeners();
@@ -93,12 +91,12 @@ class AppointmentProvider with ChangeNotifier {
 
       final newAppointment = AppointmentModel(
         id: '', // Firestore oluşturacak
-        businessId: user.uid,
+        businessId: businessId, // Seçilen işletme ID'si
         customerName: customerName,
         customerPhone: customerPhone,
         customerEmail: customerEmail,
         appointmentDate: appointmentDateTime,
-        status: 'confirmed', // Varsayılan onaylı
+        status: 'pending', // Varsayılan bekleyen (işletme onaylayacak)
         notes: notes,
         createdAt: DateTime.now(),
       );
