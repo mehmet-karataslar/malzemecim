@@ -215,10 +215,10 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
                     : GridView.builder(
                         padding: EdgeInsets.all(isWeb ? 16 : 8),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isWeb ? 4 : 2,
-                          childAspectRatio: isWeb ? 0.75 : 0.70,
-                          crossAxisSpacing: isWeb ? 12 : 8,
-                          mainAxisSpacing: isWeb ? 12 : 8,
+                          crossAxisCount: isWeb ? 8 : 2,
+                          childAspectRatio: isWeb ? 0.65 : 0.70,
+                          crossAxisSpacing: isWeb ? 8 : 8,
+                          mainAxisSpacing: isWeb ? 8 : 8,
                         ),
                         itemCount: _filteredProducts.length,
                         itemBuilder: (context, index) {
@@ -242,6 +242,7 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -255,10 +256,11 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Product Image - Fixed height
             Container(
-              height: isWeb ? 160 : 140,
+              height: isWeb ? 200 : 140,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -321,41 +323,45 @@ class _PublicProductSearchScreenState extends State<PublicProductSearchScreen> {
             ),
 
             // Product Info
-            Padding(
-              padding: EdgeInsets.fromLTRB(isWeb ? 10 : 8, isWeb ? 8 : 6, isWeb ? 10 : 8, isWeb ? 8 : 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    product.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isWeb ? 13 : 12,
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(isWeb ? 6 : 8, isWeb ? 4 : 6, isWeb ? 6 : 8, isWeb ? 4 : 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      product.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isWeb ? 13 : 12,
+                        color: Colors.grey[900],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: isWeb ? 4 : 3),
-                  Text(
-                    product.brand,
-                    style: TextStyle(
-                      fontSize: isWeb ? 11 : 10,
-                      color: Colors.grey[600],
+                    SizedBox(height: isWeb ? 2 : 3),
+                    Text(
+                      product.brand,
+                      style: TextStyle(
+                        fontSize: isWeb ? 10 : 10,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: isWeb ? 4 : 3),
-                  Text(
-                    '${product.price.toStringAsFixed(2)} ₺',
-                    style: TextStyle(
-                      fontSize: isWeb ? 15 : 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
+                    const Spacer(),
+                    Text(
+                      '${product.price.toStringAsFixed(2)} ₺',
+                      style: TextStyle(
+                        fontSize: isWeb ? 13 : 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

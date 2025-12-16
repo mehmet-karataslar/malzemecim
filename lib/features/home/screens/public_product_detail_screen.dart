@@ -63,6 +63,7 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final isWeb = MediaQuery.of(context).size.width > 600;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       appBar: AppBar(
@@ -71,189 +72,222 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
         foregroundColor: AppTheme.primaryColor,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Ürün Görselleri
-            if (product.imageUrls.isNotEmpty)
-              _buildImageCarousel(product.imageUrls, isWeb)
-            else
-              Container(
-                height: isWeb ? 400 : 300,
-                color: Colors.grey[200],
-                child: const Center(
-                  child: Icon(Icons.image, size: 80, color: Colors.grey),
+      body: isWeb
+          ? Row(
+              children: [
+                // Sol taraf - Görsel (Web için geniş)
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    color: Colors.grey[100],
+                    child: product.imageUrls.isNotEmpty
+                        ? _buildImageCarousel(product.imageUrls, isWeb, true)
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.image, size: 80, color: Colors.grey),
+                            ),
+                          ),
+                  ),
                 ),
-              ),
-
-            // Ürün Bilgileri
-            Padding(
-              padding: const EdgeInsets.all(16),
+                // Sağ taraf - Bilgiler
+                Expanded(
+                  flex: 1,
+                  child: SingleChildScrollView(
+                    child: _buildProductInfo(product, isWeb),
+                  ),
+                ),
+              ],
+            )
+          : SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Ürün Adı
-                  Text(
-                    product.name,
-                    style: TextStyle(
-                      fontSize: isWeb ? 28 : 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[900],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Marka
-                  if (product.brand.isNotEmpty)
-                    Text(
-                      product.brand,
-                      style: TextStyle(
-                        fontSize: isWeb ? 18 : 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-
-                  const SizedBox(height: 16),
-
-                  // Fiyat ve Stok
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Fiyat',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${product.price.toStringAsFixed(2)} ₺',
-                            style: TextStyle(
-                              fontSize: isWeb ? 32 : 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: product.stock > product.minStock
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: product.stock > product.minStock
-                                ? Colors.green
-                                : Colors.orange,
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Stok',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${product.stock.toStringAsFixed(0)} ${product.unit}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: product.stock > product.minStock
-                                    ? Colors.green[700]
-                                    : Colors.orange[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Ürün Detayları
-                  _buildSectionTitle('Ürün Detayları'),
-                  const SizedBox(height: 12),
-                  _buildDetailCard(
-                    icon: Icons.category,
-                    label: 'Kategori',
-                    value: product.category,
-                  ),
-                  if (product.barcode.isNotEmpty)
-                    _buildDetailCard(
-                      icon: Icons.qr_code,
-                      label: 'Barkod',
-                      value: product.barcode,
-                    ),
-                  if (product.sku.isNotEmpty)
-                    _buildDetailCard(
-                      icon: Icons.tag,
-                      label: 'SKU',
-                      value: product.sku,
-                    ),
-                  if (product.description.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _buildDetailCard(
-                      icon: Icons.description,
-                      label: 'Açıklama',
-                      value: product.description,
-                      isDescription: true,
-                    ),
-                  ],
-
-                  const SizedBox(height: 24),
-
-                  // İşletme Bilgileri
-                  _buildSectionTitle('İşletme Bilgileri'),
-                  const SizedBox(height: 12),
-                  if (_isLoadingBusiness)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (_business != null)
-                    _buildBusinessCard(_business!)
+                  // Ürün Görselleri
+                  if (product.imageUrls.isNotEmpty)
+                    _buildImageCarousel(product.imageUrls, isWeb, false)
                   else
                     Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'İşletme bilgileri yüklenemedi',
-                        style: TextStyle(color: Colors.grey),
+                      height: isWeb ? 400 : 300,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.image, size: 80, color: Colors.grey),
                       ),
                     ),
+
+                  // Ürün Bilgileri
+                  _buildProductInfo(product, isWeb),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildProductInfo(ProductModel product, bool isWeb) {
+    return Padding(
+      padding: EdgeInsets.all(isWeb ? 24 : 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ürün Adı
+          Text(
+            product.name,
+            style: TextStyle(
+              fontSize: isWeb ? 28 : 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[900],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Marka
+          if (product.brand.isNotEmpty)
+            Text(
+              product.brand,
+              style: TextStyle(
+                fontSize: isWeb ? 18 : 16,
+                color: Colors.grey[600],
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
+          // Fiyat ve Stok
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Fiyat',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${product.price.toStringAsFixed(2)} ₺',
+                    style: TextStyle(
+                      fontSize: isWeb ? 32 : 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: product.stock > product.minStock
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: product.stock > product.minStock
+                        ? Colors.green
+                        : Colors.orange,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Stok',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${product.stock.toStringAsFixed(0)} ${product.unit}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: product.stock > product.minStock
+                            ? Colors.green[700]
+                            : Colors.orange[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Ürün Detayları
+          _buildSectionTitle('Ürün Detayları'),
+          const SizedBox(height: 12),
+          _buildDetailCard(
+            icon: Icons.category,
+            label: 'Kategori',
+            value: product.category,
+          ),
+          if (product.barcode.isNotEmpty)
+            _buildDetailCard(
+              icon: Icons.qr_code,
+              label: 'Barkod',
+              value: product.barcode,
+            ),
+          if (product.sku.isNotEmpty)
+            _buildDetailCard(
+              icon: Icons.tag,
+              label: 'SKU',
+              value: product.sku,
+            ),
+          if (product.description.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _buildDetailCard(
+              icon: Icons.description,
+              label: 'Açıklama',
+              value: product.description,
+              isDescription: true,
+            ),
           ],
-        ),
+
+          const SizedBox(height: 24),
+
+          // İşletme Bilgileri
+          _buildSectionTitle('İşletme Bilgileri'),
+          const SizedBox(height: 12),
+          if (_isLoadingBusiness)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_business != null)
+            _buildBusinessCard(_business!)
+          else
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'İşletme bilgileri yüklenemedi',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildImageCarousel(List<String> imageUrls, bool isWeb) {
+  Widget _buildImageCarousel(List<String> imageUrls, bool isWeb, bool isFullScreen) {
     return Container(
-      height: isWeb ? 500 : 350,
+      height: isFullScreen ? null : (isWeb ? 500 : 350),
+      width: isFullScreen ? double.infinity : null,
+      constraints: isFullScreen ? BoxConstraints.expand() : null,
       child: Stack(
         children: [
           PageView.builder(
@@ -265,7 +299,7 @@ class _PublicProductDetailScreenState extends State<PublicProductDetailScreen> {
               return kIsWeb
                   ? Image.network(
                       imageUrls[index],
-                      fit: BoxFit.cover,
+                      fit: isFullScreen ? BoxFit.contain : BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
                       loadingBuilder: (context, child, loadingProgress) {

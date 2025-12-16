@@ -451,10 +451,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    childAspectRatio: 0.88,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    crossAxisCount: isWeb ? 8 : 4,
+                    childAspectRatio: isWeb ? 0.65 : 0.88,
+                    crossAxisSpacing: isWeb ? 8 : 12,
+                    mainAxisSpacing: isWeb ? 8 : 12,
                   ),
                   itemCount: _featuredProducts.length,
                   itemBuilder: (context, index) {
@@ -491,6 +491,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           borderRadius: BorderRadius.circular(16),
         ),
         margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () {
             Navigator.push(
@@ -504,10 +505,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Görsel Bölümü - Sabit yükseklik
               Container(
-                height: isWeb ? 160 : 140,
+                height: isWeb ? 200 : 140,
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: const BorderRadius.vertical(
@@ -613,22 +615,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 ),
               ),
               // Bilgi Bölümü
-              Padding(
-                padding: EdgeInsets.fromLTRB(isWeb ? 10 : 8, isWeb ? 8 : 6, isWeb ? 10 : 8, isWeb ? 8 : 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(isWeb ? 6 : 8, isWeb ? 4 : 6, isWeb ? 6 : 8, isWeb ? 4 : 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                     Text(
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: isWeb ? 13 : 12,
+                        color: Colors.grey[900],
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: isWeb ? 4 : 3),
+                    SizedBox(height: isWeb ? 2 : 3),
+                    const Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -639,7 +645,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: isWeb ? 15 : 14,
+                              fontSize: isWeb ? 13 : 14,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -666,7 +672,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     ),
                   ],
                 ),
-              ),
+                  ),
+                ),
             ],
           ),
         ),
