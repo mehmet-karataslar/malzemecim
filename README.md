@@ -104,6 +104,65 @@
 
 ---
 
+## 📥 İndirme ve Kurulum
+
+### 📦 Hazır Build Dosyaları
+
+Projenin hazır build dosyaları `releases/` klasöründe bulunmaktadır:
+
+#### 💻 Windows (EXE)
+- **Dosya Yolu**: `releases/malzemecim-windows-v1.0.0.zip`
+- **Versiyon**: 1.0.0+1
+- **Boyut**: ~50 MB (açıldığında)
+- **Sistem Gereksinimleri**: 
+  - Windows 10 veya üzeri (64-bit)
+  - Visual C++ Redistributable 2015-2022 (x64)
+- **Kurulum**: 
+  1. ZIP dosyasını indirin ve bir klasöre çıkarın
+  2. Visual C++ Redistributable yüklü değilse [buradan](https://aka.ms/vs/17/release/vc_redist.x64.exe) indirip yükleyin
+  3. `malzemecim.exe` dosyasına çift tıklayarak çalıştırın
+- **Detaylı Kurulum**: [KURULUM_TALIMATLARI.md](releases/KURULUM_TALIMATLARI.md) dosyasına bakın
+
+#### 📱 Android (APK)
+- **Dosya Yolu**: `releases/malzemecim-android-v1.0.0.apk`
+- **Versiyon**: 1.0.0+1
+- **Boyut**: ~77 MB
+- **Sistem Gereksinimleri**: 
+  - Android 5.0 (API 21) veya üzeri
+  - En az 100 MB boş depolama alanı
+- **Kurulum**: 
+  1. APK dosyasını Android cihazınıza indirin
+  2. "Bilinmeyen kaynaklardan yükleme" iznini verin
+  3. APK dosyasına dokunarak yükleyin
+- **Detaylı Kurulum**: [KURULUM_TALIMATLARI.md](releases/KURULUM_TALIMATLARI.md) dosyasına bakın
+
+### 🔧 Geliştirme Ortamından Build Alma
+
+Kendi build'inizi oluşturmak için:
+
+```bash
+# Windows build
+flutter build windows --release
+
+# Android APK build
+flutter build apk --release
+
+# Android App Bundle (Play Store için)
+flutter build appbundle --release
+```
+
+Build dosyaları şu konumlarda oluşturulur:
+- **Windows**: `build/windows/x64/runner/Release/`
+- **Android APK**: `build/app/outputs/flutter-apk/app-release.apk`
+
+### 📚 Kurulum Dokümantasyonu
+
+Detaylı kurulum talimatları ve sorun giderme için:
+- [KURULUM_TALIMATLARI.md](releases/KURULUM_TALIMATLARI.md) - Windows ve Android kurulum kılavuzu
+- [VC_Redistributable_Indirme.md](releases/VC_Redistributable_Indirme.md) - Visual C++ Redistributable indirme bilgileri
+
+---
+
 ## 🚀 Hızlı Başlangıç
 
 ### İlk Kullanım
@@ -183,12 +242,12 @@ Sezgisel arayüz ve basit navigasyon ile kısa sürede öğrenin. Teknik bilgi g
 
 ## 🌐 Platform Desteği
 
-| Platform | Durum | Özellikler |
-|----------|-------|------------|
-| 📱 **Android** | ✅ Tam Destek | Kamera tarama, USB barkod okuyucu, offline çalışma |
-| 🍎 **iOS** | ✅ Tam Destek | Kamera tarama, offline çalışma |
-| 🌐 **Web** | ✅ Tam Destek | Web kamera tarama, USB barkod okuyucu, responsive tasarım |
-| 💻 **Windows** | ✅ Tam Destek | USB barkod okuyucu, masaüstü deneyimi |
+| Platform | Durum | Özellikler | İndirme |
+|----------|-------|------------|---------|
+| 📱 **Android** | ✅ Tam Destek | Kamera tarama, USB barkod okuyucu, offline çalışma | [APK İndir](releases/malzemecim-android-v1.0.0.apk) |
+| 🍎 **iOS** | ✅ Tam Destek | Kamera tarama, offline çalışma | *Yakında* |
+| 🌐 **Web** | ✅ Tam Destek | Web kamera tarama, USB barkod okuyucu, responsive tasarım | *Yakında* |
+| 💻 **Windows** | ✅ Tam Destek | USB barkod okuyucu, masaüstü deneyimi | [ZIP İndir](releases/malzemecim-windows-v1.0.0.zip) |
 
 ---
 
@@ -240,12 +299,21 @@ Bu proje özel bir projedir. Tüm hakları saklıdır.
 
 ---
 
+## 📦 Versiyon Bilgisi
+
+- **Mevcut Versiyon**: 1.0.0+1
+- **Son Güncelleme**: 2025-12-16
+- **Build Dosyaları**: [releases/](releases/) klasöründe
+
+---
+
 ## 👨‍💻 Geliştirici
 
 **Mehmet Karataşlar**
 
 - GitHub: [@mehmet-karataslar](https://github.com/mehmet-karataslar)
 - Proje: [malzemecim](https://github.com/mehmet-karataslar/malzemecim)
+- Repository: `git@github.com:mehmet-karataslar/malzemecim.git`
 
 ---
 
